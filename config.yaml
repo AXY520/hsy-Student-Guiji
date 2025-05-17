@@ -1,0 +1,18 @@
+server:
+  port: 8080
+  upload_dir: "./uploads"
+  max_file_size: 10485760  # 10MB in bytes
+
+map:
+  api_key: "a72c3ace8f83aee4b962e88bfdaed2d0"
+  default_center:
+    latitude: 30.454407
+    longitude: 114.390521
+  default_zoom: 18
+
+database:
+  path: "./markers.db"
+
+logging:
+  level: "info"
+  file: "./logs/app.log" 

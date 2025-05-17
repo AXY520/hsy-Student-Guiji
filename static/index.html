@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>学生动态轨迹</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            width: 100%;
+        }
+        #app, #container {
+            width: 100%;
+            height: 100%;
+        }
+        .marker-form {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 20px;
+            border-radius: 4px;
+            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+            z-index: 999;
+            max-width: 400px;
+        }
+        .map-controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 999;
+            display: flex;
+            gap: 10px;
+        }
+        .thumbnail-container {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 10px;
+            margin-bottom: 10px;
+        }
+        .thumbnail {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .el-dialog__body img {
+            max-width: 100%;
+            max-height: 80vh;
+            display: block;
+            margin: 0 auto;
+        }
+        .image-item {
+            position: relative;
+            display: inline-block;
+        }
+        .image-actions {
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            display: none;
+        }
+        .image-item:hover .image-actions {
+            display: block;
+        }
+        .el-upload--picture-card {
+            width: 100px;
+            height: 100px;
+            line-height: 100px;
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div id="container"></div>
+        <div class="map-controls">
+            <el-button-group>
+                <el-button 
+                    :type="mapType === 'normal' ? 'primary' : ''" 
+                    size="small" 
+                    @click="switchMapType('normal')">
+                    2D地图
+                </el-button>
+                <el-button 
+                    :type="mapType === 'satellite' ? 'primary' : ''" 
+                    size="small" 
+                    @click="switchMapType('satellite')">
+                    卫星图
+                </el-button>
+            </el-button-group>
+        </div>
+        <div class="marker-form" v-if="showForm">
+            <el-form :model="form" label-width="80px">
+                <el-form-item label="描述">
+                    <el-input v-model="form.description" type="textarea"></el-input>
+                </el-form-item>
+                <el-form-item v-if="isExistingMarker && form.images && form.images.length > 0" label="已有图片">
+                    <div class="thumbnail-container">
+                        <div v-for="image in form.images" :key="image" class="image-item">
+                            <img
+                                :src="'/uploads/' + image"
+                                class="thumbnail"
+                                @click="showLargeImage(image)"
+                            >
+                            <div class="image-actions">
+                                <el-button type="danger" size="mini" icon="el-icon-delete" circle @click="deleteImage(image)"></el-button>
+                            </div>
+                        </div>
+                    </div>
+                </el-form-item>
+                <el-form-item label="添加图片">
+                    <el-upload
+                        action=""
+                        :auto-upload="false"
+                        :on-change="handleFileChange"
+                        :on-remove="handleFileRemove"
+                        multiple
+                        list-type="picture-card">
+                        <i class="el-icon-plus"></i>
+                    </el-upload>
+                </el-form-item>
+                <el-form-item>
+                    <template v-if="isExistingMarker">
+                        <el-button type="primary" @click="updateMarker">保存</el-button>
+                        <el-button type="danger" @click="deleteMarker">删除</el-button>
+                        <el-button @click="closeForm">取消</el-button>
+                    </template>
+                    <template v-else>
+                        <el-button type="primary" @click="submitMarker">保存</el-button>
+                        <el-button @click="closeForm">取消</el-button>
+                    </template>
+                </el-form-item>
+            </el-form>
+        </div>
+
+        <el-dialog :visible.sync="dialogVisible" append-to-body width="80%">
+            <img :src="'/uploads/' + currentImage" alt="预览图">
+        </el-dialog>
+    </div>
+
+    <script src="https://webapi.amap.com/maps?v=2.0&key=a72c3ace8f83aee4b962e88bfdaed2d0&plugin=AMap.MapType,AMap.Scale"></script>
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                map: null,
+                marker: null,
+                showForm: false,
+                isExistingMarker: false,
+                dialogVisible: false,
+                currentImage: '',
+                mapType: 'normal',
+                form: {
+                    id: null,
+                    latitude: null,
+                    longitude: null,
+                    description: '',
+                    files: [],
+                    images: []
+                }
+            },
+            mounted() {
+                this.initMap();
+            },
+            methods: {
+                initMap() {
+                    this.map = new AMap.Map('container', {
+                        zoom: 18,
+                        center: [114.390521, 30.454407],
+                        viewMode: '2D'
+                    });
+
+                    // 添加图层切换控件
+                    var layers = [
+                        new AMap.TileLayer(),
+                        new AMap.TileLayer.Satellite()
+                    ];
+                    this.map.addLayer(layers[0]);
+
+                    this.loadMarkers();
+
+                    this.map.on('click', (e) => {
+                        const lnglat = e.lnglat;
+                        if (this.marker) {
+                            this.marker.setMap(null);
+                        }
+                        this.marker = new AMap.Marker({
+                            position: [lnglat.getLng(), lnglat.getLat()],
+                            map: this.map
+                        });
+                        this.form.latitude = lnglat.getLat();
+                        this.form.longitude = lnglat.getLng();
+                        this.showForm = true;
+                        this.isExistingMarker = false;
+                        this.form.description = '';
+                        this.form.files = [];
+                        this.form.images = [];
+                    });
+                },
+                switchMapType(type) {
+                    this.mapType = type;
+                    if (type === 'normal') {
+                        this.map.setLayers([new AMap.TileLayer()]);
+                    } else {
+                        this.map.setLayers([new AMap.TileLayer.Satellite()]);
+                    }
+                },
+                async loadMarkers() {
+                    try {
+                        const response = await axios.get('/api/markers');
+                        const markers = response.data;
+                        
+                        // 清除所有现有标记
+                        if (this.map) {
+                            this.map.clearMap();
+                        }
+
+                        markers.forEach(marker => {
+                            const mapMarker = new AMap.Marker({
+                                position: [marker.longitude, marker.latitude],
+                                map: this.map
+                            });
+
+                            mapMarker.on('click', () => {
+                                this.form.id = marker.id;
+                                this.form.description = marker.description;
+                                this.form.latitude = marker.latitude;
+                                this.form.longitude = marker.longitude;
+                                this.form.images = marker.images || [];
+                                this.showForm = true;
+                                this.isExistingMarker = true;
+                            });
+                        });
+                    } catch (error) {
+                        this.$message.error('加载点位失败');
+                        console.error(error);
+                    }
+                },
+                handleFileChange(file) {
+                    this.form.files.push(file.raw);
+                },
+                handleFileRemove(file) {
+                    const index = this.form.files.findIndex(f => f === file.raw);
+                    if (index > -1) {
+                        this.form.files.splice(index, 1);
+                    }
+                },
+                showLargeImage(image) {
+                    this.currentImage = image;
+                    this.dialogVisible = true;
+                },
+                async submitMarker() {
+                    try {
+                        const markerResponse = await axios.post('/api/markers', {
+                            latitude: this.form.latitude,
+                            longitude: this.form.longitude,
+                            description: this.form.description
+                        });
+
+                        if (this.form.files.length > 0) {
+                            const formData = new FormData();
+                            this.form.files.forEach(file => {
+                                formData.append('images', file);
+                            });
+                            await axios.post(`/api/markers/${markerResponse.data.id}/images`, formData);
+                        }
+
+                        this.$message.success('保存成功');
+                        this.closeForm();
+                        this.loadMarkers();
+                    } catch (error) {
+                        this.$message.error('保存失败');
+                        console.error(error);
+                    }
+                },
+                async deleteMarker() {
+                    try {
+                        await this.$confirm('确定要删除这个点位吗？', '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        await axios.delete(`/api/markers/${this.form.id}`);
+                        this.$message.success('删除成功');
+                        this.closeForm();
+                        await this.loadMarkers();
+                    } catch (error) {
+                        if (error === 'cancel') return;
+                        this.$message.error('删除失败：' + (error.response?.data?.error || '未知错误'));
+                        console.error(error);
+                    }
+                },
+                async deleteImage(filename) {
+                    try {
+                        await this.$confirm('确定要删除这张图片吗？', '提示', {
+                            confirmButtonText: '确定',
+                            cancelButtonText: '取消',
+                            type: 'warning'
+                        });
+                        
+                        await axios.delete(`/api/markers/${this.form.id}/images/${filename}`);
+                        this.$message.success('删除成功');
+                        
+                        // 从列表中移除已删除的图片
+                        const index = this.form.images.indexOf(filename);
+                        if (index > -1) {
+                            this.form.images.splice(index, 1);
+                        }
+                    } catch (error) {
+                        if (error === 'cancel') return;
+                        this.$message.error('删除失败：' + (error.response?.data?.error || '未知错误'));
+                        console.error(error);
+                    }
+                },
+                async updateMarker() {
+                    try {
+                        // 更新基本信息
+                        await axios.put(`/api/markers/${this.form.id}`, {
+                            latitude: this.form.latitude,
+                            longitude: this.form.longitude,
+                            description: this.form.description
+                        });
+
+                        // 上传新图片（如果有）
+                        if (this.form.files.length > 0) {
+                            const formData = new FormData();
+                            this.form.files.forEach(file => {
+                                formData.append('images', file);
+                            });
+                            await axios.post(`/api/markers/${this.form.id}/images`, formData);
+                        }
+
+                        this.$message.success('更新成功');
+                        this.closeForm();
+                        this.loadMarkers();
+                    } catch (error) {
+                        this.$message.error('更新失败：' + (error.response?.data?.error || error.message));
+                        console.error(error);
+                    }
+                },
+                closeForm() {
+                    this.showForm = false;
+                    this.form.id = null;
+                    this.form.latitude = null;
+                    this.form.longitude = null;
+                    this.form.description = '';
+                    this.form.files = [];
+                    this.form.images = [];
+                    this.isExistingMarker = false;
+                    if (this.marker) {
+                        this.marker.setMap(null);
+                        this.marker = null;
+                    }
+                }
+            }
+        });
+    </script>
+</body>
+</html> 
