@@ -31,7 +31,7 @@ jobs:
 
       # 4. 可选：上传构建产物（供下载）
       - name: 上传构建结果
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: mapproject-binary
           path: mapproject
