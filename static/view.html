@@ -10,6 +10,8 @@
             padding: 0;
             height: 100%;
             width: 100%;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(to right, #ece9e6, #ffffff);
         }
         #app, #container {
             width: 100%;
@@ -22,19 +24,32 @@
             z-index: 999;
             display: flex;
             gap: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
         .image-preview {
             position: fixed;
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            background: white;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             padding: 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             z-index: 999;
             max-width: 90vw;
             max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
         }
         .image-preview img {
             max-width: 100%;
@@ -45,6 +60,9 @@
             gap: 10px;
             flex-wrap: wrap;
             margin-top: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            animation: fadeIn 0.5s ease-in-out;
         }
         .thumbnail {
             width: 100px;
@@ -52,6 +70,49 @@
             object-fit: cover;
             cursor: pointer;
             border-radius: 4px;
+            transition: transform 0.3s ease;
+        }
+        .thumbnail:hover {
+            transform: scale(1.1);
+        }
+        .description {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+        .close-button {
+            width: 100px;
+            padding: 10px 0;
+            background-color: #1a73e8;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.3s ease, transform 0.3s ease;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .close-button:hover {
+            background-color: #155ab6;
+            transform: scale(1.05);
+        }
+        .overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+        .overlay img {
+            max-width: 90vw;
+            max-height: 90vh;
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            animation: zoomIn 0.5s ease-in-out;
         }
         .el-dialog {
             margin-top: 5vh !important;
@@ -65,10 +126,33 @@
             max-height: 85vh;
             object-fit: contain;
         }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        @keyframes zoomIn {
+            from { transform: scale(0.8); opacity: 0; }
+            to { transform: scale(1); opacity: 1; }
+        }
+        .stats-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            padding: 10px 20px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            z-index: 1000;
+            color: #333;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+        }
     </style>
 </head>
 <body>
-    <div id="app">
+    <div id="app" @click.self="closeThumbnail">
         <div id="container"></div>
         <div class="map-controls">
             <el-button-group>
@@ -86,22 +170,25 @@
                 </el-button>
             </el-button-group>
         </div>
+        <div class="stats-container">
+            <p>点位总数: {{ markers.length }}</p>
+        </div>
         <div class="image-preview" v-if="selectedMarker">
-            <h3>{{ selectedMarker.description }}</h3>
+            <h3 class="description">{{ selectedMarker.description }}</h3>
             <div class="thumbnail-container">
                 <img
                     v-for="image in selectedMarker.images"
                     :key="image"
                     :src="'/uploads/' + image"
                     class="thumbnail"
-                    @click="showLargeImage(image)"
+                    @click.stop="showLargeImage(image)"
                 >
             </div>
-            <el-button style="margin-top: 10px;" @click="selectedMarker = null">关闭</el-button>
+            <button class="close-button" @click="selectedMarker = null">关闭</button>
         </div>
-        <el-dialog :visible.sync="dialogVisible" append-to-body width="95%" :modal="true">
+        <div v-if="dialogVisible" class="overlay" @click="dialogVisible = false">
             <img :src="'/uploads/' + currentImage" alt="预览图">
-        </el-dialog>
+        </div>
     </div>
 
     <script src="https://webapi.amap.com/maps?v=2.0&key=a72c3ace8f83aee4b962e88bfdaed2d0&plugin=AMap.MapType,AMap.Scale"></script>
@@ -176,6 +263,9 @@
                 showLargeImage(image) {
                     this.currentImage = image;
                     this.dialogVisible = true;
+                },
+                closeThumbnail() {
+                    this.selectedMarker = null;
                 }
             }
         });

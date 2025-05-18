@@ -10,6 +10,8 @@
             padding: 0;
             height: 100%;
             width: 100%;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(to right, #ece9e6, #ffffff);
         }
         #app, #container {
             width: 100%;
@@ -19,10 +21,13 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: white;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
             padding: 20px;
-            border-radius: 4px;
-            box-shadow: 0 2px 12px 0 rgba(0,0,0,0.1);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
             z-index: 999;
             max-width: 400px;
         }
@@ -33,6 +38,13 @@
             z-index: 999;
             display: flex;
             gap: 10px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            padding: 10px;
+            border-radius: 10px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
         }
         .thumbnail-container {
             display: flex;
@@ -49,10 +61,25 @@
             border-radius: 4px;
         }
         .el-dialog__body img {
-            max-width: 100%;
-            max-height: 80vh;
-            display: block;
-            margin: 0 auto;
+            max-width: 95vw;
+            max-height: 85vh;
+            object-fit: contain;
+            border-radius: 15px;
+        }
+        .el-dialog__body {
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            border-radius: 15px;
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            border: 1px solid rgba(255, 255, 255, 0.18);
+        }
+        .el-dialog__header {
+            display: none;
         }
         .image-item {
             position: relative;
