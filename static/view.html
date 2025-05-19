@@ -168,6 +168,12 @@
                     @click="switchMapType('satellite')">
                     卫星图
                 </el-button>
+                <el-button 
+                    :type="mapType === 'satellite' ? 'primary' : ''" 
+                    size="small" 
+                    @click="ClickVR">
+                    VR探校
+                </el-button>
             </el-button-group>
         </div>
         <div class="stats-container">
@@ -186,8 +192,23 @@
             </div>
             <button class="close-button" @click="selectedMarker = null">关闭</button>
         </div>
-        <div v-if="dialogVisible" class="overlay" @click="dialogVisible = false">
-            <img :src="'/uploads/' + currentImage" alt="预览图">
+        <div v-if="dialogVisible" class="overlay" @click.self="dialogVisible = false">
+            <img 
+                :src="'/uploads/' + currentImage" 
+                alt="预览图"
+                ref="previewImg"
+                :style="{
+                    transform: 'translate(' + translateX + 'px, ' + translateY + 'px) scale(' + scale + ')',
+                    transition: dragging ? 'none' : 'transform 0.2s',
+                    cursor: dragging ? 'grabbing' : 'grab',
+                    'user-select': 'none'
+                }"
+                @wheel.stop.prevent="onWheel"
+                @mousedown.stop.prevent="onMouseDown"
+                @mousemove.stop.prevent="onMouseMove"
+                @mouseup.stop.prevent="onMouseUp"
+                @mouseleave.stop.prevent="onMouseUp"
+            >
         </div>
     </div>
 
@@ -204,11 +225,28 @@
                 selectedMarker: null,
                 dialogVisible: false,
                 currentImage: '',
-                mapType: 'normal'
+                mapType: 'normal',
+                scale: 1,
+                translateX: 0,
+                translateY: 0,
+                dragging: false,
+                dragStartX: 0,
+                dragStartY: 0,
+                imgStartX: 0,
+                imgStartY: 0
             },
             mounted() {
                 this.initMap();
                 this.loadMarkers();
+            },
+            watch: {
+                dialogVisible(val) {
+                    if (val) {
+                        this.scale = 1;
+                        this.translateX = 0;
+                        this.translateY = 0;
+                    }
+                }
             },
             methods: {
                 initMap() {
@@ -229,9 +267,15 @@
                     this.mapType = type;
                     if (type === 'normal') {
                         this.map.setLayers([new AMap.TileLayer()]);
-                    } else {
+                    } else if (type === 'satellite') {
                         this.map.setLayers([new AMap.TileLayer.Satellite()]);
-                    }
+                    } 
+                    // else if (type === 'clickVR') {
+                    //     this.map.setLayers([new AMap.TileLayer.VR()]);
+                    // }
+                },
+                ClickVR() {
+                    window.open('https://www.yunjing720.com/index.php?s=tour/index/index&tid=c8410d0078d4504ecc3d8085288f10ca', '_blank');
                 },
                 async loadMarkers() {
                     try {
@@ -266,6 +310,48 @@
                 },
                 closeThumbnail() {
                     this.selectedMarker = null;
+                },
+                onWheel(e) {
+                    const img = this.$refs.previewImg;
+                    if (!img) return;
+                    // 获取图片在视口中的位置
+                    const rect = img.getBoundingClientRect();
+                    // 鼠标在图片上的相对坐标（以图片左上角为原点）
+                    const offsetX = e.clientX - rect.left;
+                    const offsetY = e.clientY - rect.top;
+                    // 鼠标在图片上的相对比例
+                    const relX = offsetX / rect.width;
+                    const relY = offsetY / rect.height;
+                    // 缩放步进
+                    const step = 0.2;
+                    let newScale = this.scale;
+                    if (e.deltaY < 0) {
+                        newScale = Math.min(this.scale + step, 5);
+                    } else {
+                        newScale = Math.max(this.scale - step, 0.2);
+                    }
+                    // 计算缩放前后，鼠标指向的图片点的偏移变化
+                    const dx = (relX - 0.5) * rect.width;
+                    const dy = (relY - 0.5) * rect.height;
+                    // 计算缩放中心的平移调整
+                    this.translateX -= dx * (newScale - this.scale) / this.scale;
+                    this.translateY -= dy * (newScale - this.scale) / this.scale;
+                    this.scale = newScale;
+                },
+                onMouseDown(e) {
+                    this.dragging = true;
+                    this.dragStartX = e.clientX;
+                    this.dragStartY = e.clientY;
+                    this.imgStartX = this.translateX;
+                    this.imgStartY = this.translateY;
+                },
+                onMouseMove(e) {
+                    if (!this.dragging) return;
+                    this.translateX = this.imgStartX + (e.clientX - this.dragStartX);
+                    this.translateY = this.imgStartY + (e.clientY - this.dragStartY);
+                },
+                onMouseUp() {
+                    this.dragging = false;
                 }
             }
         });

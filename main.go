@@ -312,7 +312,7 @@ func main() {
 	})
 
 	// HTML页面路由
-	r.GET("/", func(c *gin.Context) {
+	r.GET("/admin", func(c *gin.Context) {
 		c.File("./static/index.html")
 	})
 
