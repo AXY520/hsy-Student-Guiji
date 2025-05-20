@@ -149,6 +149,36 @@
             color: #333;
             font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
         }
+        /* 修改自定义标记点样式 */
+        .custom-marker {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            cursor: pointer;
+            transition: transform 0.2s, background-color 0.2s;
+        }
+        .custom-marker:hover {
+            transform: scale(1.1);
+        }
+        .custom-marker.sufficient {
+            background-color: #409EFF;
+        }
+        .custom-marker.sufficient:hover {
+            background-color: #66b1ff;
+        }
+        .custom-marker.insufficient {
+            background-color: #F56C6C;
+        }
+        .custom-marker.insufficient:hover {
+            background-color: #f78989;
+        }
     </style>
 </head>
 <body>
@@ -178,9 +208,15 @@
         </div>
         <div class="stats-container">
             <p>点位总数: {{ markers.length }}</p>
+            <!-- <p>摄像头数量: {{ getTotalCameras }}</p>
+            <p>需要数量: {{ getTotalRequired }}</p>
+            <p>缺少数量: {{ getShortage }}</p> -->
         </div>
         <div class="image-preview" v-if="selectedMarker">
-            <h3 class="description">{{ selectedMarker.description }}</h3>
+            <h3 class="description">
+                当前数量: {{ selectedMarker.value }}<br>
+                需要数量: {{ selectedMarker.required_value }}
+            </h3>
             <div class="thumbnail-container">
                 <img
                     v-for="image in selectedMarker.images"
@@ -235,6 +271,17 @@
                 imgStartX: 0,
                 imgStartY: 0
             },
+            computed: {
+                getTotalCameras() {
+                    return this.markers.reduce((sum, marker) => sum + (marker.value || 0), 0);
+                },
+                getTotalRequired() {
+                    return this.markers.reduce((sum, marker) => sum + (marker.required_value || 0), 0);
+                },
+                getShortage() {
+                    return Math.max(0, this.getTotalRequired - this.getTotalCameras);
+                }
+            },
             mounted() {
                 this.initMap();
                 this.loadMarkers();
@@ -277,32 +324,38 @@
                 ClickVR() {
                     window.open('https://www.yunjing720.com/index.php?s=tour/index/index&tid=c8410d0078d4504ecc3d8085288f10ca', '_blank');
                 },
-                async loadMarkers() {
-                    try {
-                        const response = await axios.get('/api/markers');
-                        const markers = response.data;
-                        
-                        // 清除所有现有标记
-                        if (this.map) {
-                            this.map.clearMap();
-                        }
-
-                        markers.forEach(marker => {
-                            const mapMarker = new AMap.Marker({
-                                position: [marker.longitude, marker.latitude],
-                                map: this.map
-                            });
-
-                            mapMarker.on('click', () => {
-                                this.selectedMarker = marker;
-                            });
-
-                            this.markers.push(mapMarker);
-                        });
-                    } catch (error) {
-                        this.$message.error('加载点位失败');
-                        console.error(error);
+                loadMarkers() {
+                    // 清除所有现有标记点
+                    if (this.map) {
+                        this.map.clearMap();
                     }
+
+                    axios.get('/api/markers')
+                        .then(response => {
+                            this.markers = response.data;
+                            this.markers.forEach(marker => {
+                                // 创建自定义标记点内容
+                                const markerContent = document.createElement('div');
+                                markerContent.className = 'custom-marker ' + 
+                                    (marker.value >= marker.required_value ? 'sufficient' : 'insufficient');
+                                markerContent.innerHTML = marker.value.toString();
+
+                                const markerObj = new AMap.Marker({
+                                    position: [marker.longitude, marker.latitude],
+                                    map: this.map,
+                                    content: markerContent,
+                                    offset: new AMap.Pixel(-15, -15)
+                                });
+
+                                markerObj.on('click', () => {
+                                    this.selectedMarker = marker;
+                                });
+                            });
+                        })
+                        .catch(error => {
+                            console.error('加载标记点失败:', error);
+                            this.$message.error('加载标记点失败');
+                        });
                 },
                 showLargeImage(image) {
                     this.currentImage = image;

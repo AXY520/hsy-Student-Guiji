@@ -17,11 +17,12 @@ import (
 )
 
 type Marker struct {
-	ID          int      `json:"id"`
-	Latitude    float64  `json:"latitude"`
-	Longitude   float64  `json:"longitude"`
-	Description string   `json:"description"`
-	Images      []string `json:"images"`
+	ID            int      `json:"id"`
+	Latitude      float64  `json:"latitude"`
+	Longitude     float64  `json:"longitude"`
+	Value         float64  `json:"value"`
+	RequiredValue float64  `json:"required_value"`
+	Images        []string `json:"images"`
 }
 
 func initDB(dbPath string) *sql.DB {
@@ -32,12 +33,80 @@ func initDB(dbPath string) *sql.DB {
 			zap.String("path", dbPath))
 	}
 
+	// 检查是否需要添加新列
+	var hasRequiredValue bool
+	err = db.QueryRow(`
+		SELECT COUNT(*) FROM pragma_table_info('markers') 
+		WHERE name='required_value'`).Scan(&hasRequiredValue)
+
+	if err != nil {
+		logger.Log.Fatal("检查表结构失败",
+			zap.Error(err))
+	}
+
+	if !hasRequiredValue {
+		// 添加新列
+		_, err = db.Exec(`ALTER TABLE markers ADD COLUMN required_value REAL DEFAULT 0;`)
+		if err != nil {
+			logger.Log.Fatal("添加新列失败",
+				zap.Error(err))
+		}
+	}
+
+	// 检查是否存在旧表结构
+	var hasOldTable bool
+	err = db.QueryRow(`
+		SELECT COUNT(*) FROM sqlite_master 
+		WHERE type='table' AND name='markers' 
+		AND sql LIKE '%description%'`).Scan(&hasOldTable)
+
+	if err != nil {
+		logger.Log.Fatal("检查表结构失败",
+			zap.Error(err))
+	}
+
+	if hasOldTable {
+		// 备份旧数据
+		_, err = db.Exec(`
+			CREATE TABLE IF NOT EXISTS markers_backup AS 
+			SELECT * FROM markers;
+		`)
+		if err != nil {
+			logger.Log.Fatal("备份数据失败",
+				zap.Error(err))
+		}
+
+		// 备份图片数据
+		_, err = db.Exec(`
+			CREATE TABLE IF NOT EXISTS images_backup AS 
+			SELECT * FROM images;
+		`)
+		if err != nil {
+			logger.Log.Fatal("备份图片数据失败",
+				zap.Error(err))
+		}
+
+		// 删除旧表
+		_, err = db.Exec(`DROP TABLE markers;`)
+		if err != nil {
+			logger.Log.Fatal("删除旧表失败",
+				zap.Error(err))
+		}
+
+		_, err = db.Exec(`DROP TABLE images;`)
+		if err != nil {
+			logger.Log.Fatal("删除图片表失败",
+				zap.Error(err))
+		}
+	}
+
 	sqlStmt := `
 	CREATE TABLE IF NOT EXISTS markers (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		latitude REAL,
 		longitude REAL,
-		description TEXT
+		value REAL DEFAULT 0,
+		required_value REAL DEFAULT 0
 	);
 	CREATE TABLE IF NOT EXISTS images (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,8 +116,58 @@ func initDB(dbPath string) *sql.DB {
 	);`
 
 	if _, err = db.Exec(sqlStmt); err != nil {
-		logger.Log.Fatal("数据库初始化失败",
+		logger.Log.Fatal("创建表失败",
 			zap.Error(err))
+	}
+
+	// 如果存在旧数据，进行数据迁移
+	if hasOldTable {
+		// 迁移标记点数据，让数据库自动生成新的ID
+		_, err = db.Exec(`
+			INSERT INTO markers (latitude, longitude, value, required_value)
+			SELECT latitude, longitude, 0, 0 
+			FROM markers_backup;
+		`)
+		if err != nil {
+			logger.Log.Fatal("迁移数据失败",
+				zap.Error(err))
+		}
+
+		// 创建临时表存储新旧ID的映射关系
+		_, err = db.Exec(`
+			CREATE TEMPORARY TABLE id_mapping AS
+			SELECT old.id as old_id, new.id as new_id
+			FROM markers_backup old
+			JOIN markers new
+			ON old.latitude = new.latitude AND old.longitude = new.longitude;
+		`)
+		if err != nil {
+			logger.Log.Fatal("创建ID映射失败",
+				zap.Error(err))
+		}
+
+		// 使用ID映射迁移图片数据
+		_, err = db.Exec(`
+			INSERT INTO images (marker_id, filename)
+			SELECT m.new_id, i.filename
+			FROM images_backup i
+			JOIN id_mapping m ON i.marker_id = m.old_id;
+		`)
+		if err != nil {
+			logger.Log.Fatal("迁移图片数据失败",
+				zap.Error(err))
+		}
+
+		// 删除备份表和临时表
+		_, err = db.Exec(`
+			DROP TABLE IF EXISTS markers_backup;
+			DROP TABLE IF EXISTS images_backup;
+			DROP TABLE IF EXISTS id_mapping;
+		`)
+		if err != nil {
+			logger.Log.Fatal("删除备份表失败",
+				zap.Error(err))
+		}
 	}
 
 	return db
@@ -95,8 +214,8 @@ func main() {
 			return
 		}
 
-		result, err := db.Exec("INSERT INTO markers (latitude, longitude, description) VALUES (?, ?, ?)",
-			marker.Latitude, marker.Longitude, marker.Description)
+		result, err := db.Exec("INSERT INTO markers (latitude, longitude, value, required_value) VALUES (?, ?, ?, ?)",
+			marker.Latitude, marker.Longitude, marker.Value, marker.RequiredValue)
 		if err != nil {
 			logger.Log.Error("插入标记点失败",
 				zap.Error(err),
@@ -128,8 +247,8 @@ func main() {
 			return
 		}
 
-		result, err := db.Exec("UPDATE markers SET latitude = ?, longitude = ?, description = ? WHERE id = ?",
-			marker.Latitude, marker.Longitude, marker.Description, id)
+		result, err := db.Exec("UPDATE markers SET latitude = ?, longitude = ?, value = ?, required_value = ? WHERE id = ?",
+			marker.Latitude, marker.Longitude, marker.Value, marker.RequiredValue, id)
 		if err != nil {
 			logger.Log.Error("更新标记点失败",
 				zap.Error(err),
@@ -283,11 +402,13 @@ func main() {
 
 	r.GET("/api/markers", func(c *gin.Context) {
 		rows, err := db.Query(`
-			SELECT m.id, m.latitude, m.longitude, m.description, GROUP_CONCAT(i.filename)
+			SELECT m.id, m.latitude, m.longitude, m.value, m.required_value, GROUP_CONCAT(i.filename)
 			FROM markers m
 			LEFT JOIN images i ON m.id = i.marker_id
 			GROUP BY m.id`)
 		if err != nil {
+			logger.Log.Error("查询标记点失败",
+				zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
@@ -297,8 +418,10 @@ func main() {
 		for rows.Next() {
 			var marker Marker
 			var imagesStr sql.NullString
-			err := rows.Scan(&marker.ID, &marker.Latitude, &marker.Longitude, &marker.Description, &imagesStr)
+			err := rows.Scan(&marker.ID, &marker.Latitude, &marker.Longitude, &marker.Value, &marker.RequiredValue, &imagesStr)
 			if err != nil {
+				logger.Log.Error("扫描标记点数据失败",
+					zap.Error(err))
 				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 				return
 			}
