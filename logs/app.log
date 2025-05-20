@@ -155,3 +155,18 @@
 {"level":"info","time":"2025-05-20T10:53:25.948+0800","caller":"hsy-Student-Guiji/main.go:274","msg":"更新标记点","id":"58","latitude":30.453522,"longitude":114.393425}
 {"level":"info","time":"2025-05-20T10:53:52.774+0800","caller":"hsy-Student-Guiji/main.go:274","msg":"更新标记点","id":"43","latitude":30.451977,"longitude":114.39062}
 {"level":"info","time":"2025-05-20T10:55:11.184+0800","caller":"hsy-Student-Guiji/main.go:274","msg":"更新标记点","id":"41","latitude":30.455495,"longitude":114.392479}
+{"level":"info","time":"2025-05-20T22:30:45.703+0800","caller":"hsy-Student-Guiji/main.go:279","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
+{"level":"info","time":"2025-05-20T22:30:52.635+0800","caller":"hsy-Student-Guiji/main.go:279","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
+{"level":"info","time":"2025-05-20T22:30:56.161+0800","caller":"hsy-Student-Guiji/main.go:420","msg":"删除图片成功","marker_id":"76","filename":"IMG_0100.jpg"}
+{"level":"info","time":"2025-05-20T22:32:10.739+0800","caller":"hsy-Student-Guiji/main.go:279","msg":"更新标记点","id":"77","latitude":30.455682,"longitude":114.391423}
+{"level":"info","time":"2025-05-20T22:32:12.945+0800","caller":"hsy-Student-Guiji/main.go:279","msg":"更新标记点","id":"77","latitude":30.455682,"longitude":114.391423}
+{"level":"fatal","time":"2025-05-20T22:37:58.934+0800","caller":"hsy-Student-Guiji/main.go:59","msg":"检查 schema 版本失败","error":"no such column: version"}
+{"level":"info","time":"2025-05-20T22:38:54.954+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"37","latitude":30.454929,"longitude":114.391154}
+{"level":"info","time":"2025-05-20T22:39:04.152+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"37","latitude":30.454929,"longitude":114.391154}
+{"level":"info","time":"2025-05-20T22:39:19.445+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"23","latitude":30.452997,"longitude":114.390363}
+{"level":"info","time":"2025-05-20T22:39:28.725+0800","caller":"hsy-Student-Guiji/main.go:205","msg":"新增标记点","id":81,"latitude":30.452774,"longitude":114.38943}
+{"level":"info","time":"2025-05-20T22:49:54.713+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
+{"level":"error","time":"2025-05-20T22:49:54.747+0800","caller":"hsy-Student-Guiji/main.go:322","msg":"文件过大","filename":"微信图片_20250520224930.jpg"}
+{"level":"info","time":"2025-05-20T22:51:10.036+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
+{"level":"info","time":"2025-05-20T22:51:32.092+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"23","latitude":30.452997,"longitude":114.390363}
+{"level":"info","time":"2025-05-20T22:51:36.066+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
