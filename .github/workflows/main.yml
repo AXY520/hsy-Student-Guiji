@@ -29,12 +29,12 @@ jobs:
         run: go mod tidy
 
       # 4. 编译项目，生成 mapproject 可执行文件
-      - name: Build mapproject
-        run: go build -o mapproject main.go
+      - name: Build map
+        run: go build -o map main.go
 
       # 5. 上传编译产物，注意必须用 @v4
       - name: Upload build artifact
         uses: actions/upload-artifact@v4   # 必须使用 @v4，否则报错“Missing download info”
         with:
-          name: mapproject-binary
-          path: mapproject
+          name: map-binary
+          path: map
