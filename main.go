@@ -45,6 +45,9 @@ func initDB(dbPath string) *sql.DB {
 	db.SetMaxIdleConns(5)
 	db.SetConnMaxLifetime(time.Hour)
 
+	// 创建所有必要的表
+	createTables(db)
+
 	// 检查schema_version表是否存在
 	var tableExists int
 	err = db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'").Scan(&tableExists)
@@ -99,6 +102,23 @@ func createTables(db *sql.DB) {
 		marker_id INTEGER,
 		filename TEXT,
 		FOREIGN KEY(marker_id) REFERENCES markers(id)
+	);
+	CREATE TABLE IF NOT EXISTS visits (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ip TEXT,
+		user_agent TEXT,
+		path TEXT,
+		visit_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		referer TEXT
+	);
+	CREATE TABLE IF NOT EXISTS user_actions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		ip TEXT,
+		user_agent TEXT,
+		action_type TEXT,
+		action_detail TEXT,
+		target_id TEXT,
+		action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);`
 	if _, err := db.Exec(sqlStmt); err != nil {
 		logger.Log.Fatal("创建表失败", zap.Error(err))
@@ -202,6 +222,11 @@ func (app *App) CreateMarker(c *gin.Context) {
 	id, _ := result.LastInsertId()
 	marker.ID = int(id)
 
+	// 记录创建标记点的操作
+	app.recordUserAction(c, "create_marker",
+		fmt.Sprintf("创建标记点 (%.6f, %.6f)", marker.Latitude, marker.Longitude),
+		fmt.Sprintf("%d", marker.ID))
+
 	app.Logger.Info("新增标记点",
 		zap.Int("id", marker.ID),
 		zap.Float64("latitude", marker.Latitude),
@@ -243,6 +268,11 @@ func (app *App) UpdateMarker(c *gin.Context) {
 		return
 	}
 
+	// 记录更新标记点的操作
+	app.recordUserAction(c, "update_marker",
+		fmt.Sprintf("更新标记点 #%s (%.6f, %.6f)", id, marker.Latitude, marker.Longitude),
+		id)
+
 	app.Logger.Info("更新标记点",
 		zap.String("id", id),
 		zap.Float64("latitude", marker.Latitude),
@@ -253,6 +283,16 @@ func (app *App) UpdateMarker(c *gin.Context) {
 
 func (app *App) DeleteMarker(c *gin.Context) {
 	id := c.Param("id")
+
+	// 获取标记点信息用于记录
+	var lat, lng float64
+	err := app.DB.QueryRow("SELECT latitude, longitude FROM markers WHERE id = ?", id).Scan(&lat, &lng)
+	if err != nil && err != sql.ErrNoRows {
+		app.Logger.Error("查询标记点失败", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
 	tx, err := app.DB.Begin()
 	if err != nil {
 		app.Logger.Error("开始事务失败", zap.Error(err))
@@ -296,6 +336,11 @@ func (app *App) DeleteMarker(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
+	// 记录删除标记点的操作
+	app.recordUserAction(c, "delete_marker",
+		fmt.Sprintf("删除标记点 #%s (%.6f, %.6f)", id, lat, lng),
+		id)
 
 	c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
 }
@@ -344,6 +389,11 @@ func (app *App) UploadImages(c *gin.Context) {
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
 		}
+
+		// 记录上传图片的操作
+		app.recordUserAction(c, "upload_image",
+			fmt.Sprintf("为标记点 #%s 上传图片 %s", markerID, filename),
+			markerID)
 
 		filenames = append(filenames, filename)
 	}
@@ -406,6 +456,11 @@ func (app *App) DeleteImage(c *gin.Context) {
 		return
 	}
 
+	// 记录删除图片的操作
+	app.recordUserAction(c, "delete_image",
+		fmt.Sprintf("从标记点 #%s 删除图片 %s", markerID, filename),
+		markerID)
+
 	app.Logger.Info("删除图片成功",
 		zap.String("marker_id", markerID),
 		zap.String("filename", filename))
@@ -462,6 +517,143 @@ func (app *App) GetMarkers(c *gin.Context) {
 	c.JSON(http.StatusOK, result)
 }
 
+func (app *App) recordVisit(c *gin.Context) {
+	ip := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+	path := c.Request.URL.Path
+	referer := c.Request.Referer()
+
+	_, err := app.DB.Exec(`
+		INSERT INTO visits (ip, user_agent, path, referer)
+		VALUES (?, ?, ?, ?)
+	`, ip, userAgent, path, referer)
+
+	if err != nil {
+		app.Logger.Error("记录访问失败",
+			zap.Error(err),
+			zap.String("ip", ip),
+			zap.String("path", path))
+	}
+}
+
+func (app *App) recordUserAction(c *gin.Context, actionType string, actionDetail string, targetID string) {
+	ip := c.ClientIP()
+	userAgent := c.Request.UserAgent()
+
+	_, err := app.DB.Exec(`
+		INSERT INTO user_actions (ip, user_agent, action_type, action_detail, target_id)
+		VALUES (?, ?, ?, ?, ?)
+	`, ip, userAgent, actionType, actionDetail, targetID)
+
+	if err != nil {
+		app.Logger.Error("记录用户操作失败",
+			zap.Error(err),
+			zap.String("ip", ip),
+			zap.String("action_type", actionType))
+	}
+}
+
+func (app *App) GetVisits(c *gin.Context) {
+	rows, err := app.DB.Query(`
+		SELECT 
+			v.ip,
+			v.user_agent,
+			COUNT(DISTINCT v.id) as visit_count,
+			MAX(v.visit_time) as last_visit,
+			GROUP_CONCAT(DISTINCT v.path) as paths,
+			GROUP_CONCAT(DISTINCT v.referer) as referers,
+			GROUP_CONCAT(
+				json_object(
+					'type', ua.action_type,
+					'detail', ua.action_detail,
+					'target', ua.target_id,
+					'time', ua.action_time
+				)
+			) as actions
+		FROM visits v
+		LEFT JOIN user_actions ua ON v.ip = ua.ip AND v.user_agent = ua.user_agent
+		GROUP BY v.ip, v.user_agent
+		ORDER BY last_visit DESC
+		LIMIT 1000
+	`)
+	if err != nil {
+		app.Logger.Error("查询访问记录失败", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+	defer rows.Close()
+
+	var visits []map[string]interface{}
+	for rows.Next() {
+		var ip, userAgent, paths, referers, actionsJson string
+		var visitCount int
+		var lastVisit string
+		if err := rows.Scan(&ip, &userAgent, &visitCount, &lastVisit, &paths, &referers, &actionsJson); err != nil {
+			app.Logger.Error("扫描访问记录失败", zap.Error(err))
+			continue
+		}
+
+		uniquePaths := make(map[string]bool)
+		for _, path := range strings.Split(paths, ",") {
+			if path != "" {
+				uniquePaths[path] = true
+			}
+		}
+
+		uniqueReferers := make(map[string]bool)
+		for _, referer := range strings.Split(referers, ",") {
+			if referer != "" {
+				uniqueReferers[referer] = true
+			}
+		}
+
+		pathsList := make([]string, 0, len(uniquePaths))
+		for path := range uniquePaths {
+			pathsList = append(pathsList, path)
+		}
+
+		referersList := make([]string, 0, len(uniqueReferers))
+		for referer := range uniqueReferers {
+			referersList = append(referersList, referer)
+		}
+
+		// 解析操作记录
+		var actions []map[string]interface{}
+		if actionsJson != "" && actionsJson != "null" {
+			actionStrings := strings.Split(actionsJson, "},{")
+			for _, actionStr := range actionStrings {
+				actionMap := make(map[string]interface{})
+				// 简单解析 JSON 对象字符串
+				actionStr = strings.Trim(actionStr, "[]}{")
+				pairs := strings.Split(actionStr, ",")
+				for _, pair := range pairs {
+					kv := strings.Split(pair, ":")
+					if len(kv) == 2 {
+						key := strings.Trim(kv[0], "\" ")
+						value := strings.Trim(kv[1], "\" ")
+						actionMap[key] = value
+					}
+				}
+				if len(actionMap) > 0 {
+					actions = append(actions, actionMap)
+				}
+			}
+		}
+
+		visits = append(visits, map[string]interface{}{
+			"ip":         ip,
+			"userAgent":  userAgent,
+			"visitCount": visitCount,
+			"lastVisit":  lastVisit,
+			"paths":      pathsList,
+			"referers":   referersList,
+			"actions":    actions,
+		})
+	}
+
+	c.JSON(http.StatusOK, visits)
+}
+
 func main() {
 	cfg, err := config.LoadConfig("config.yaml")
 	if err != nil {
@@ -489,17 +681,18 @@ func main() {
 	r := gin.Default()
 	r.Use(errorHandler())
 
+	app := &App{DB: db, Cfg: cfg, Logger: logger.Log}
+
 	// 自定义静态文件处理
 	r.Use(func(c *gin.Context) {
 		if strings.HasPrefix(c.Request.URL.Path, "/uploads/") {
 			c.Header("Cache-Control", "public, max-age=3600")
 		}
+		app.recordVisit(c)
 		c.Next()
 	})
 	r.Static("/uploads", cfg.Server.UploadDir)
 	r.Static("/static", "./static")
-
-	app := &App{DB: db, Cfg: cfg, Logger: logger.Log}
 
 	api := r.Group("/api")
 	{
@@ -512,6 +705,7 @@ func main() {
 			markers.POST("/:id/images", app.UploadImages)
 			markers.DELETE("/:id/images/:filename", app.DeleteImage)
 		}
+		api.GET("/visits", app.GetVisits)
 	}
 
 	r.GET("/admin", func(c *gin.Context) {
@@ -522,6 +716,9 @@ func main() {
 	})
 	r.GET("/login", func(c *gin.Context) {
 		c.File("./static/login.html")
+	})
+	r.GET("/visits", func(c *gin.Context) {
+		c.File("./static/visits.html")
 	})
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/login")

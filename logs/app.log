@@ -170,3 +170,21 @@
 {"level":"info","time":"2025-05-20T22:51:10.036+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
 {"level":"info","time":"2025-05-20T22:51:32.092+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"23","latitude":30.452997,"longitude":114.390363}
 {"level":"info","time":"2025-05-20T22:51:36.066+0800","caller":"hsy-Student-Guiji/main.go:246","msg":"更新标记点","id":"76","latitude":30.452994,"longitude":114.390771}
+{"level":"error","time":"2025-05-23T17:16:26.516+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/visit"}
+{"level":"error","time":"2025-05-23T17:16:32.357+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/visits"}
+{"level":"error","time":"2025-05-23T17:16:32.748+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/api/visits"}
+{"level":"error","time":"2025-05-23T17:16:32.748+0800","caller":"hsy-Student-Guiji/main.go:500","msg":"查询访问记录失败","error":"no such table: visits"}
+{"level":"error","time":"2025-05-23T17:16:39.833+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/api/visits"}
+{"level":"error","time":"2025-05-23T17:16:39.834+0800","caller":"hsy-Student-Guiji/main.go:500","msg":"查询访问记录失败","error":"no such table: visits"}
+{"level":"error","time":"2025-05-23T17:17:32.711+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/view"}
+{"level":"error","time":"2025-05-23T17:17:33.376+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/api/markers"}
+{"level":"error","time":"2025-05-23T17:17:39.042+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/api/visits"}
+{"level":"error","time":"2025-05-23T17:17:39.042+0800","caller":"hsy-Student-Guiji/main.go:500","msg":"查询访问记录失败","error":"no such table: visits"}
+{"level":"error","time":"2025-05-23T17:17:40.074+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/api/visits"}
+{"level":"error","time":"2025-05-23T17:17:40.074+0800","caller":"hsy-Student-Guiji/main.go:500","msg":"查询访问记录失败","error":"no such table: visits"}
+{"level":"error","time":"2025-05-23T17:17:42.570+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/uploads/IMG_20250515_144759.jpg"}
+{"level":"error","time":"2025-05-23T17:17:46.592+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/visits"}
+{"level":"error","time":"2025-05-23T17:17:46.692+0800","caller":"hsy-Student-Guiji/main.go:485","msg":"记录访问失败","error":"no such table: visits","ip":"127.0.0.1","path":"/api/visits"}
+{"level":"error","time":"2025-05-23T17:17:46.692+0800","caller":"hsy-Student-Guiji/main.go:500","msg":"查询访问记录失败","error":"no such table: visits"}
+{"level":"error","time":"2025-05-23T17:26:07.545+0800","caller":"hsy-Student-Guiji/main.go:594","msg":"查询访问记录失败","error":"circular reference: user_actions"}
+{"level":"error","time":"2025-05-23T17:26:12.136+0800","caller":"hsy-Student-Guiji/main.go:594","msg":"查询访问记录失败","error":"circular reference: user_actions"}
