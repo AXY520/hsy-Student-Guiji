@@ -520,6 +520,12 @@ func main() {
 	r.GET("/view", func(c *gin.Context) {
 		c.File("./static/view.html")
 	})
+	r.GET("/login", func(c *gin.Context) {
+		c.File("./static/login.html")
+	})
+	r.GET("/", func(c *gin.Context) {
+		c.Redirect(http.StatusMovedPermanently, "/login")
+	})
 
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),

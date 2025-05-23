@@ -201,6 +201,7 @@
                     卫星图
                 </el-button>
             </el-button-group>
+            <el-button type="danger" size="small" @click="logout" style="margin-left: 10px;">退出登录</el-button>
         </div>
         <div class="marker-form" v-if="showForm">
             <el-form :model="form" label-width="120px">
@@ -329,6 +330,11 @@
                 }
             },
             mounted() {
+                // 检查登录状态
+                if (localStorage.getItem('isLoggedIn') !== 'true') {
+                    window.location.href = '/login';
+                    return;
+                }
                 this.initMap();
             },
             methods: {
@@ -579,6 +585,16 @@
                 },
                 onMouseUp() {
                     this.dragging = false;
+                },
+                logout() {
+                    this.$confirm('确定要退出登录吗？', '提示', {
+                        confirmButtonText: '确定',
+                        cancelButtonText: '取消',
+                        type: 'warning'
+                    }).then(() => {
+                        localStorage.removeItem('isLoggedIn');
+                        window.location.href = '/login';
+                    }).catch(() => {});
                 }
             }
         });
