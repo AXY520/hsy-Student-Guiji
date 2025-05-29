@@ -188,3 +188,14 @@
 {"level":"error","time":"2025-05-23T17:17:46.692+0800","caller":"hsy-Student-Guiji/main.go:500","msg":"查询访问记录失败","error":"no such table: visits"}
 {"level":"error","time":"2025-05-23T17:26:07.545+0800","caller":"hsy-Student-Guiji/main.go:594","msg":"查询访问记录失败","error":"circular reference: user_actions"}
 {"level":"error","time":"2025-05-23T17:26:12.136+0800","caller":"hsy-Student-Guiji/main.go:594","msg":"查询访问记录失败","error":"circular reference: user_actions"}
+{"level":"info","time":"2025-05-29T11:12:02.445+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":82,"latitude":30.455799,"longitude":114.39249}
+{"level":"info","time":"2025-05-29T11:12:15.402+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":83,"latitude":30.455445,"longitude":114.390574}
+{"level":"info","time":"2025-05-29T11:12:55.084+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":84,"latitude":30.453103,"longitude":114.3917}
+{"level":"info","time":"2025-05-29T11:13:02.871+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":85,"latitude":30.452843,"longitude":114.391966}
+{"level":"info","time":"2025-05-29T11:13:12.181+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":86,"latitude":30.452867,"longitude":114.393998}
+{"level":"info","time":"2025-05-29T11:15:02.714+0800","caller":"hsy-Student-Guiji/main.go:464","msg":"删除图片成功","marker_id":"42","filename":"IMG_0100.jpg"}
+{"level":"info","time":"2025-05-29T11:15:16.682+0800","caller":"hsy-Student-Guiji/main.go:276","msg":"更新标记点","id":"42","latitude":30.451982,"longitude":114.390444}
+{"level":"info","time":"2025-05-29T11:15:30.632+0800","caller":"hsy-Student-Guiji/main.go:464","msg":"删除图片成功","marker_id":"42","filename":"IMG_0100.jpg"}
+{"level":"info","time":"2025-05-29T11:15:39.145+0800","caller":"hsy-Student-Guiji/main.go:276","msg":"更新标记点","id":"42","latitude":30.451982,"longitude":114.390444}
+{"level":"info","time":"2025-05-29T11:16:00.988+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":87,"latitude":30.452391,"longitude":114.390456}
+{"level":"info","time":"2025-05-29T11:16:20.414+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":88,"latitude":30.452416,"longitude":114.390668}

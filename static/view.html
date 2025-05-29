@@ -205,12 +205,19 @@
                     VR探校
                 </el-button>
             </el-button-group>
+            <el-switch
+                v-model="showRequiredCount"
+                active-text="需要数量"
+                inactive-text="当前数量"
+                style="margin-left: 10px; margin-top: 5px;"
+                @change="updateMarkerDisplay">
+            </el-switch>
         </div>
         <div class="stats-container">
             <p>点位总数: {{ markers.length }}</p>
-            <!-- <p>摄像头数量: {{ getTotalCameras }}</p>
+            <!-- <p>摄像头数量: {{ getTotalCameras }}</p> -->
             <p>需要数量: {{ getTotalRequired }}</p>
-            <p>缺少数量: {{ getShortage }}</p> -->
+            <!-- <p>缺少数量: {{ getShortage }}</p> -->
         </div>
         <div class="image-preview" v-if="selectedMarker">
             <h3 class="description">
@@ -271,7 +278,8 @@
                 dragStartX: 0,
                 dragStartY: 0,
                 imgStartX: 0,
-                imgStartY: 0
+                imgStartY: 0,
+                showRequiredCount: false
             },
             computed: {
                 getTotalCameras() {
@@ -340,7 +348,7 @@
                                 const markerContent = document.createElement('div');
                                 markerContent.className = 'custom-marker ' + 
                                     (marker.value >= marker.required_value ? 'sufficient' : 'insufficient');
-                                markerContent.innerHTML = marker.value.toString();
+                                markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
 
                                 const markerObj = new AMap.Marker({
                                     position: [marker.longitude, marker.latitude],
@@ -352,6 +360,9 @@
                                 markerObj.on('click', () => {
                                     this.selectedMarker = marker;
                                 });
+                                
+                                // 保存标记对象的引用，以便后续更新
+                                marker.markerObj = markerObj;
                             });
                         })
                         .catch(error => {
@@ -407,6 +418,14 @@
                 },
                 onMouseUp() {
                     this.dragging = false;
+                },
+                updateMarkerDisplay() {
+                    this.markers.forEach(marker => {
+                        if (marker.markerObj) {
+                            const markerContent = marker.markerObj.getContent();
+                            markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
+                        }
+                    });
                 }
             }
         });
