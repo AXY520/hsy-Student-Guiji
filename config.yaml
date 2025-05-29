@@ -4,7 +4,7 @@ server:
   max_file_size: 10485760  # 10MB in bytes
 
 map:
-  api_key: "a72c3ace8f83aee4b962e88bfdaed2d0"
+  api_key: "c83c955371f66936b2bb0115c6a5b1b1"
   default_center:
     latitude: 30.454407
     longitude: 114.390521
