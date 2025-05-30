@@ -199,3 +199,5 @@
 {"level":"info","time":"2025-05-29T11:15:39.145+0800","caller":"hsy-Student-Guiji/main.go:276","msg":"更新标记点","id":"42","latitude":30.451982,"longitude":114.390444}
 {"level":"info","time":"2025-05-29T11:16:00.988+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":87,"latitude":30.452391,"longitude":114.390456}
 {"level":"info","time":"2025-05-29T11:16:20.414+0800","caller":"hsy-Student-Guiji/main.go:230","msg":"新增标记点","id":88,"latitude":30.452416,"longitude":114.390668}
+{"level":"info","time":"2025-05-30T08:49:52.777+0800","caller":"hsy-Student-Guiji/main.go:276","msg":"更新标记点","id":"9","latitude":30.455778,"longitude":114.389031}
+{"level":"info","time":"2025-05-30T08:49:57.357+0800","caller":"hsy-Student-Guiji/main.go:276","msg":"更新标记点","id":"9","latitude":30.455778,"longitude":114.389031}

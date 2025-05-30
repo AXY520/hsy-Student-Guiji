@@ -130,18 +130,14 @@
         }
         .custom-marker:hover {
             transform: scale(1.1);
+            filter: brightness(1.1);
         }
+        /* 移除预设的样式，改为自定义颜色 */
         .custom-marker.sufficient {
-            background-color: #409EFF;  /* 蓝色表示数量充足 */
-        }
-        .custom-marker.sufficient:hover {
-            background-color: #66b1ff;
+            background-color: #409EFF;  /* 蓝色表示数量充足 - 作为默认值 */
         }
         .custom-marker.insufficient {
-            background-color: #F56C6C;  /* 红色表示数量不足 */
-        }
-        .custom-marker.insufficient:hover {
-            background-color: #f78989;
+            background-color: #F56C6C;  /* 红色表示数量不足 - 作为默认值 */
         }
         /* 添加图片预览相关样式 */
         .overlay {
@@ -180,6 +176,49 @@
         .el-dialog__body {
             padding: 0 !important;
             background: transparent !important;
+        }
+        /* 颜色选择器相关样式 */
+        .color-preview {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+            vertical-align: middle;
+            border: 1px solid #dcdfe6;
+        }
+        .color-select-container {
+            display: flex;
+            align-items: center;
+        }
+        /* 颜色选择按钮样式 */
+        .color-options {
+            display: flex;
+            gap: 10px;
+        }
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            border: 2px solid #dcdfe6;
+            transition: transform 0.2s;
+        }
+        .color-option:hover {
+            transform: scale(1.1);
+        }
+        .color-option.selected {
+            border: 2px solid #333;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+        .color-blue {
+            background-color: #409EFF;
+        }
+        .color-red {
+            background-color: #F56C6C;
+        }
+        .color-yellow {
+            background-color: #E6A23C;
         }
     </style>
 </head>
@@ -224,6 +263,44 @@
                         controls-position="right"
                         style="width: 100%;">
                     </el-input-number>
+                </el-form-item>
+                <el-form-item label="充足状态颜色">
+                    <div class="color-options">
+                        <div 
+                            class="color-option color-blue" 
+                            :class="{ selected: form.sufficientColor === '#409EFF' }"
+                            @click="selectSufficientColor('#409EFF')">
+                        </div>
+                        <div 
+                            class="color-option color-red" 
+                            :class="{ selected: form.sufficientColor === '#F56C6C' }"
+                            @click="selectSufficientColor('#F56C6C')">
+                        </div>
+                        <div 
+                            class="color-option color-yellow" 
+                            :class="{ selected: form.sufficientColor === '#E6A23C' }"
+                            @click="selectSufficientColor('#E6A23C')">
+                        </div>
+                    </div>
+                </el-form-item>
+                <el-form-item label="不足状态颜色">
+                    <div class="color-options">
+                        <div 
+                            class="color-option color-blue" 
+                            :class="{ selected: form.insufficientColor === '#409EFF' }"
+                            @click="selectInsufficientColor('#409EFF')">
+                        </div>
+                        <div 
+                            class="color-option color-red" 
+                            :class="{ selected: form.insufficientColor === '#F56C6C' }"
+                            @click="selectInsufficientColor('#F56C6C')">
+                        </div>
+                        <div 
+                            class="color-option color-yellow" 
+                            :class="{ selected: form.insufficientColor === '#E6A23C' }"
+                            @click="selectInsufficientColor('#E6A23C')">
+                        </div>
+                    </div>
                 </el-form-item>
                 <el-form-item v-if="isExistingMarker && form.images && form.images.length > 0" label="已有图片">
                     <div class="thumbnail-container">
@@ -308,7 +385,9 @@
                     value: 0,
                     required_value: 0,
                     files: [],
-                    images: []
+                    images: [],
+                    sufficientColor: '#409EFF',   // 默认充足状态颜色（蓝色）
+                    insufficientColor: '#F56C6C'  // 默认不足状态颜色（红色）
                 },
                 // 添加图片缩放和拖拽相关的数据
                 scale: 1,
@@ -318,7 +397,9 @@
                 dragStartX: 0,
                 dragStartY: 0,
                 imgStartX: 0,
-                imgStartY: 0
+                imgStartY: 0,
+                // 存储所有标记点的颜色设置
+                markerColors: {}
             },
             watch: {
                 dialogVisible(val) {
@@ -335,6 +416,13 @@
                     window.location.href = '/login';
                     return;
                 }
+                
+                // 从localStorage加载颜色设置
+                const savedColors = localStorage.getItem('markerColors');
+                if (savedColors) {
+                    this.markerColors = JSON.parse(savedColors);
+                }
+                
                 this.initMap();
             },
             methods: {
@@ -364,6 +452,7 @@
                         const markerContent = document.createElement('div');
                         markerContent.className = 'custom-marker insufficient';
                         markerContent.innerHTML = '0';
+                        markerContent.style.backgroundColor = this.form.insufficientColor;
 
                         this.marker = new AMap.Marker({
                             position: [lnglat.getLng(), lnglat.getLat()],
@@ -380,7 +469,36 @@
                         this.form.required_value = 0;
                         this.form.files = [];
                         this.form.images = [];
+                        
+                        // 设置默认颜色
+                        this.form.sufficientColor = this.markerColors.defaultSufficient || '#409EFF';
+                        this.form.insufficientColor = this.markerColors.defaultInsufficient || '#F56C6C';
                     });
+                },
+                updateMarkerColor() {
+                    // 更新当前标记点的颜色
+                    if (this.marker) {
+                        const content = this.marker.getContent();
+                        if (content) {
+                            const isSufficient = this.form.value >= this.form.required_value;
+                            content.style.backgroundColor = isSufficient ? this.form.sufficientColor : this.form.insufficientColor;
+                        }
+                    }
+                    
+                    // 保存默认颜色设置到localStorage
+                    if (!this.isExistingMarker) {
+                        this.markerColors.defaultSufficient = this.form.sufficientColor;
+                        this.markerColors.defaultInsufficient = this.form.insufficientColor;
+                        localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
+                    }
+                },
+                selectSufficientColor(color) {
+                    this.form.sufficientColor = color;
+                    this.updateMarkerColor();
+                },
+                selectInsufficientColor(color) {
+                    this.form.insufficientColor = color;
+                    this.updateMarkerColor();
                 },
                 switchMapType(type) {
                     this.mapType = type;
@@ -399,11 +517,20 @@
                     axios.get('/api/markers')
                         .then(response => {
                             response.data.forEach(marker => {
+                                // 获取该标记点的颜色设置，如果没有则使用默认值
+                                const markerColorSettings = this.markerColors[marker.id] || {
+                                    sufficient: this.markerColors.defaultSufficient || '#409EFF',
+                                    insufficient: this.markerColors.defaultInsufficient || '#F56C6C'
+                                };
+                                
                                 // 创建自定义标记点内容
                                 const markerContent = document.createElement('div');
-                                markerContent.className = 'custom-marker ' + 
-                                    (marker.value >= marker.required_value ? 'sufficient' : 'insufficient');
+                                const isSufficient = marker.value >= marker.required_value;
+                                markerContent.className = 'custom-marker ' + (isSufficient ? 'sufficient' : 'insufficient');
                                 markerContent.innerHTML = marker.value.toString();
+                                markerContent.style.backgroundColor = isSufficient 
+                                    ? markerColorSettings.sufficient 
+                                    : markerColorSettings.insufficient;
 
                                 const markerObj = new AMap.Marker({
                                     position: [marker.longitude, marker.latitude],
@@ -419,6 +546,11 @@
                                     this.form.value = marker.value;
                                     this.form.required_value = marker.required_value;
                                     this.form.images = marker.images || [];
+                                    
+                                    // 加载该标记点的颜色设置
+                                    this.form.sufficientColor = markerColorSettings.sufficient;
+                                    this.form.insufficientColor = markerColorSettings.insufficient;
+                                    
                                     this.showForm = true;
                                     this.isExistingMarker = true;
                                 });
@@ -458,6 +590,13 @@
                             });
                             await axios.post(`/api/markers/${markerResponse.data.id}/images`, formData);
                         }
+                        
+                        // 保存该标记点的颜色设置
+                        this.markerColors[markerResponse.data.id] = {
+                            sufficient: this.form.sufficientColor,
+                            insufficient: this.form.insufficientColor
+                        };
+                        localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
 
                         this.$message.success('保存成功');
                         this.closeForm();
@@ -476,6 +615,13 @@
                         });
                         
                         await axios.delete(`/api/markers/${this.form.id}`);
+                        
+                        // 删除该标记点的颜色设置
+                        if (this.markerColors[this.form.id]) {
+                            delete this.markerColors[this.form.id];
+                            localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
+                        }
+                        
                         this.$message.success('删除成功');
                         this.closeForm();
                         await this.loadMarkers();
@@ -525,6 +671,13 @@
                             });
                             await axios.post(`/api/markers/${this.form.id}/images`, formData);
                         }
+                        
+                        // 保存该标记点的颜色设置
+                        this.markerColors[this.form.id] = {
+                            sufficient: this.form.sufficientColor,
+                            insufficient: this.form.insufficientColor
+                        };
+                        localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
 
                         this.$message.success('更新成功');
                         this.closeForm();
