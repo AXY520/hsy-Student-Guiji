@@ -208,3 +208,7 @@
 {"level":"fatal","time":"2025-05-30T09:48:42.448+0800","caller":"hsy-Student-Guiji/main.go:778","msg":"服务器启动失败","error":"listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
 {"level":"fatal","time":"2025-05-30T09:53:06.900+0800","caller":"hsy-Student-Guiji/main.go:778","msg":"服务器启动失败","error":"listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
 {"level":"fatal","time":"2025-05-30T09:59:55.064+0800","caller":"hsy-Student-Guiji/main.go:778","msg":"服务器启动失败","error":"listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"fatal","time":"2025-05-30T10:29:42.073+0800","caller":"hsy-Student-Guiji/main.go:778","msg":"服务器启动失败","error":"listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"fatal","time":"2025-05-30T10:33:42.720+0800","caller":"hsy-Student-Guiji/main.go:778","msg":"服务器启动失败","error":"listen tcp :8080: bind: Only one usage of each socket address (protocol/network address/port) is normally permitted."}
+{"level":"info","time":"2025-05-30T11:40:10.258+0800","caller":"hsy-Student-Guiji/main.go:464","msg":"删除图片成功","marker_id":"87","filename":"IMG_0101.jpg"}
+{"level":"info","time":"2025-05-30T11:40:23.731+0800","caller":"hsy-Student-Guiji/main.go:276","msg":"更新标记点","id":"87","latitude":30.452391,"longitude":114.390456}

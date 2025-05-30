@@ -210,7 +210,15 @@
                 active-text="需要数量"
                 inactive-text="当前数量"
                 style="margin-left: 10px; margin-top: 5px;"
-                @change="updateMarkerDisplay">
+                @change="updateMarkerDisplay"
+                v-if="!showSequence">
+            </el-switch>
+            <el-switch
+                v-model="showSequence"
+                active-text="序号形式"
+                inactive-text="数量形式"
+                style="margin-left: 10px; margin-top: 5px;"
+                @change="toggleDisplayMode">
             </el-switch>
         </div>
         <div class="stats-container">
@@ -279,7 +287,8 @@
                 dragStartY: 0,
                 imgStartX: 0,
                 imgStartY: 0,
-                showRequiredCount: false
+                showRequiredCount: false,
+                showSequence: false
             },
             computed: {
                 getTotalCameras() {
@@ -342,13 +351,24 @@
 
                     axios.get('/api/markers')
                         .then(response => {
-                            this.markers = response.data;
-                            this.markers.forEach(marker => {
+                            // 对标记点按照ID排序，确保序号固定
+                            this.markers = response.data.sort((a, b) => a.id - b.id);
+                            
+                            this.markers.forEach((marker, index) => {
+                                // 为每个标记点添加固定序号
+                                marker.sequence = index + 1;
+                                
                                 // 创建自定义标记点内容
                                 const markerContent = document.createElement('div');
                                 markerContent.className = 'custom-marker ' + 
                                     (marker.value >= marker.required_value ? 'sufficient' : 'insufficient');
-                                markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
+                                
+                                // 根据当前显示模式决定显示内容
+                                if (this.showSequence) {
+                                    markerContent.innerHTML = marker.sequence.toString();
+                                } else {
+                                    markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
+                                }
 
                                 const markerObj = new AMap.Marker({
                                     position: [marker.longitude, marker.latitude],
@@ -426,6 +446,23 @@
                             markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
                         }
                     });
+                },
+                toggleDisplayMode() {
+                    // 切换显示模式时重新加载标记点
+                    if (this.showSequence) {
+                        // 显示序号模式
+                        this.markers.forEach((marker, index) => {
+                            if (marker.markerObj) {
+                                const markerContent = marker.markerObj.getContent();
+                                // 保存序号到marker对象中，方便后续使用
+                                marker.sequence = index + 1;
+                                markerContent.innerHTML = marker.sequence.toString();
+                            }
+                        });
+                    } else {
+                        // 恢复数量模式
+                        this.updateMarkerDisplay();
+                    }
                 }
             }
         });
