@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>学生动态轨迹</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
+            background: #f5f7fa;
+        }
+        #app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .report-container {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+        }
+        .map-container {
+            width: 100%;
+            margin-bottom: 30px;
+            border: 1px solid #dcdfe6;
+            border-radius: 5px;
+            overflow: hidden;
+            position: relative;
+        }
+        .map-image {
+            width: 100%;
+            display: block;
+        }
+        .controls {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats-box {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ebeef5;
+        }
+        .stats-title {
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #409EFF;
+        }
+        .stats-items {
+            display: flex;
+            justify-content: space-around;
+        }
+        .stats-item {
+            text-align: center;
+        }
+        .stats-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #303133;
+        }
+        .stats-label {
+            font-size: 14px;
+            color: #909399;
+        }
+        .color-legend {
+            margin-top: 10px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .legend-item {
+            text-align: center;
+        }
+        .color-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        .blue-dot {
+            background-color: #007bff;
+        }
+        .red-dot {
+            background-color: #ff0000;
+        }
+        .legend-text {
+            display: block;
+        }
+        .upload-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin: 20px 0;
+        }
+        .map-uploader {
+            width: 100%;
+            max-width: 800px;
+        }
+        .map-uploader .el-upload {
+            border: 1px dashed #d9d9d9;
+            border-radius: 6px;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            width: 100%;
+            height: 200px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .map-uploader .el-upload:hover {
+            border-color: #409EFF;
+        }
+        .map-uploader .el-icon-plus {
+            font-size: 28px;
+            color: #8c939d;
+            margin-bottom: 10px;
+        }
+        .map-uploader .el-upload__text {
+            color: #606266;
+            font-size: 14px;
+            text-align: center;
+        }
+        .map-section {
+            margin-bottom: 30px;
+        }
+        .page-break {
+            page-break-before: always;
+            height: 0;
+            margin: 0;
+            padding: 0;
+        }
+        .satellite-section {
+            margin-top: 20px;
+        }
+        .legend-box {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #ebeef5;
+        }
+        .legend-note {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: #606266;
+            font-weight: bold;
+        }
+        .print-only {
+            display: none;
+        }
+        @media print {
+            .no-print {
+                display: none;
+            }
+            .print-only {
+                display: block;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="controls no-print">
+            <el-button type="primary" @click="generatePDF">生成PDF</el-button>
+            <el-button @click="goBack">返回地图</el-button>
+        </div>
+        
+        <div id="report" class="report-container">
+            <div class="header">
+                <h1>学生动态轨迹</h1>
+                <p>生成时间: {{ formatDate(new Date()) }}</p>
+            </div>
+            
+            <div class="stats-box">
+                <div class="stats-title">统计信息</div>
+                <div class="stats-items">
+                    <div class="stats-item">
+                        <div class="stats-value">{{ markers.length }}</div>
+                        <div class="stats-label">点位总数</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-value">{{ getTotalRequired }}</div>
+                        <div class="stats-label">需要数量</div>
+                    </div>
+                    <div class="stats-item">
+                        <div class="stats-value">{{ getTotalCurrent }}</div>
+                        <div class="stats-label">当前数量</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="legend-box">
+                <div class="color-legend">
+                    <div class="legend-item">
+                        <span class="color-dot blue-dot"></span>
+                        <span class="legend-text">蓝色：位置已有摄像头，并且数量满足要求</span>
+                    </div>
+                    <div class="legend-item">
+                        <span class="color-dot red-dot"></span>
+                        <span class="legend-text">红色：当前位置没有或已有摄像头数量不满足要求</span>
+                    </div>
+                </div>
+                <div class="legend-note">
+                    <p>标记点数字代表当前位置的摄像头数量</p>
+                </div>
+            </div>
+            
+            <div class="map-section">
+                <h2>二维地图标记点分布</h2>
+                <div class="upload-container no-print" v-if="!normalMap">
+                    <el-upload
+                        class="map-uploader"
+                        action="#"
+                        :http-request="uploadNormalMap"
+                        :show-file-list="false"
+                        accept="image/*">
+                        <i class="el-icon-plus"></i>
+                        <div class="el-upload__text">点击上传2D地图</div>
+                    </el-upload>
+                </div>
+                <div class="map-container" v-if="normalMap">
+                    <img :src="normalMap" class="map-image" alt="2D地图标记点分布">
+                </div>
+            </div>
+            
+            <div class="page-break"></div>
+            
+            <div class="map-section satellite-section">
+                <h2>卫星地图标记点分布</h2>
+                <div class="upload-container no-print" v-if="!satelliteMap">
+                    <el-upload
+                        class="map-uploader"
+                        action="#"
+                        :http-request="uploadSatelliteMap"
+                        :show-file-list="false"
+                        accept="image/*">
+                        <i class="el-icon-plus"></i>
+                        <div class="el-upload__text">点击上传卫星地图</div>
+                    </el-upload>
+                </div>
+                <div class="map-container" v-if="satelliteMap">
+                    <img :src="satelliteMap" class="map-image" alt="卫星地图标记点分布">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@2/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui/lib/index.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script>
+    <script>
+        new Vue({
+            el: '#app',
+            data: {
+                markers: [],
+                loading: true,
+                normalMap: '',
+                satelliteMap: ''
+            },
+            computed: {
+                getTotalRequired() {
+                    return this.markers.reduce((total, marker) => total + (marker.required_value || 0), 0);
+                },
+                getTotalCurrent() {
+                    return this.markers.reduce((total, marker) => total + (marker.value || 0), 0);
+                }
+            },
+            mounted() {
+                // 检查登录状态
+                if (localStorage.getItem('isLoggedIn') !== 'true') {
+                    window.location.href = '/login';
+                    return;
+                }
+                
+                this.loadMarkers();
+                
+                // 从本地存储恢复上传的地图图片
+                const savedNormalMap = localStorage.getItem('normalMap');
+                const savedSatelliteMap = localStorage.getItem('satelliteMap');
+                
+                if (savedNormalMap) {
+                    this.normalMap = savedNormalMap;
+                }
+                
+                if (savedSatelliteMap) {
+                    this.satelliteMap = savedSatelliteMap;
+                }
+            },
+            methods: {
+                loadMarkers() {
+                    this.loading = true;
+                    axios.get('/api/markers')
+                        .then(response => {
+                            this.markers = response.data;
+                            this.loading = false;
+                        })
+                        .catch(error => {
+                            console.error('加载标记点失败:', error);
+                            this.$message.error('加载标记点失败');
+                            this.loading = false;
+                        });
+                },
+                uploadNormalMap(options) {
+                    const file = options.file;
+                    if (!file) {
+                        this.$message.error('请选择文件');
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.normalMap = e.target.result;
+                        // 保存到本地存储，便于下次使用
+                        localStorage.setItem('normalMap', this.normalMap);
+                    };
+                    reader.readAsDataURL(file);
+                },
+                uploadSatelliteMap(options) {
+                    const file = options.file;
+                    if (!file) {
+                        this.$message.error('请选择文件');
+                        return;
+                    }
+                    
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        this.satelliteMap = e.target.result;
+                        // 保存到本地存储，便于下次使用
+                        localStorage.setItem('satelliteMap', this.satelliteMap);
+                    };
+                    reader.readAsDataURL(file);
+                },
+                formatDate(date) {
+                    const year = date.getFullYear();
+                    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+                    const day = date.getDate().toString().padStart(2, '0');
+                    const hours = date.getHours().toString().padStart(2, '0');
+                    const minutes = date.getMinutes().toString().padStart(2, '0');
+                    
+                    return `${year}-${month}-${day} ${hours}:${minutes}`;
+                },
+                async generatePDF() {
+                    try {
+                        // 检查是否已上传地图
+                        if (!this.normalMap || !this.satelliteMap) {
+                            this.$message({
+                                message: '请先上传2D地图和卫星地图',
+                                type: 'warning'
+                            });
+                            return;
+                        }
+                        
+                        this.$message({
+                            message: '正在生成PDF，请稍候...',
+                            type: 'info',
+                            duration: 0
+                        });
+                        
+                        // 配置html2pdf选项
+                        const opt = {
+                            margin: [10, 10],
+                            filename: `标记点报告_${this.formatDate(new Date()).replace(/[: ]/g, '_')}.pdf`,
+                            image: { type: 'jpeg', quality: 0.98 },
+                            html2canvas: { 
+                                scale: 2,
+                                useCORS: true, 
+                                allowTaint: true,
+                                letterRendering: true,
+                                imageTimeout: 10000  // 增加图片加载超时时间到10秒
+                            },
+                            jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' }
+                        };
+                        
+                        // 生成PDF
+                        const element = document.getElementById('report');
+                        await html2pdf().set(opt).from(element).save();
+                        
+                        this.$message.closeAll();
+                        this.$message({
+                            message: 'PDF生成成功',
+                            type: 'success'
+                        });
+                    } catch (error) {
+                        this.$message.closeAll();
+                        this.$message.error('PDF生成失败: ' + error.message);
+                        console.error('PDF生成失败:', error);
+                    }
+                },
+                goBack() {
+                    window.location.href = '/admin';
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

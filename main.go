@@ -706,6 +706,47 @@ func main() {
 			markers.DELETE("/:id/images/:filename", app.DeleteImage)
 		}
 		api.GET("/visits", app.GetVisits)
+
+		// 高德地图静态图API代理
+		api.GET("/amap-staticmap", func(c *gin.Context) {
+			// 构建高德地图静态图API的URL
+			amapURL := "https://restapi.amap.com/v3/staticmap?key=" + cfg.Map.APIKey
+
+			// 将请求参数传递给高德API
+			queryParams := c.Request.URL.Query()
+			for key, values := range queryParams {
+				for _, value := range values {
+					if key != "key" { // 不传递客户端的key，使用服务器配置的key
+						amapURL += "&" + key + "=" + value
+					}
+				}
+			}
+
+			// 使用http客户端请求高德地图API
+			resp, err := http.Get(amapURL)
+			if err != nil {
+				logger.Log.Error("请求高德地图API失败", zap.Error(err), zap.String("url", amapURL))
+				c.JSON(http.StatusInternalServerError, gin.H{"error": "请求高德地图API失败"})
+				return
+			}
+			defer resp.Body.Close()
+
+			// 设置响应头
+			for key, values := range resp.Header {
+				for _, value := range values {
+					c.Header(key, value)
+				}
+			}
+
+			// 设置CORS头，允许任何来源访问
+			c.Header("Access-Control-Allow-Origin", "*")
+
+			// 设置状态码
+			c.Status(resp.StatusCode)
+
+			// 将高德地图API的响应直接传递给客户端
+			c.DataFromReader(resp.StatusCode, resp.ContentLength, resp.Header.Get("Content-Type"), resp.Body, nil)
+		})
 	}
 
 	r.GET("/admin", func(c *gin.Context) {
@@ -719,6 +760,9 @@ func main() {
 	})
 	r.GET("/visits", func(c *gin.Context) {
 		c.File("./static/visits.html")
+	})
+	r.GET("/pdf-report", func(c *gin.Context) {
+		c.File("./static/pdf-report.html")
 	})
 	r.GET("/", func(c *gin.Context) {
 		c.Redirect(http.StatusMovedPermanently, "/login")

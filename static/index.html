@@ -240,6 +240,7 @@
                     卫星图
                 </el-button>
             </el-button-group>
+            <el-button type="success" size="small" @click="generateReport" style="margin-left: 10px;">生成报告</el-button>
             <el-button type="danger" size="small" @click="logout" style="margin-left: 10px;">退出登录</el-button>
         </div>
         <div class="marker-form" v-if="showForm">
@@ -748,6 +749,9 @@
                         localStorage.removeItem('isLoggedIn');
                         window.location.href = '/login';
                     }).catch(() => {});
+                },
+                generateReport() {
+                    window.location.href = '/pdf-report';
                 }
             }
         });
