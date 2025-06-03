@@ -238,3 +238,5 @@
 {"level":"warn","time":"2025-06-03T23:25:38.192+0800","caller":"hsy-Student-Guiji/main.go:251","msg":"ALTER TABLE语句执行失败（可能列已存在）","error":"duplicate column name: file_size","sql":"ALTER TABLE images ADD COLUMN file_size INTEGER DEFAULT 0;"}
 {"level":"warn","time":"2025-06-03T23:25:38.192+0800","caller":"hsy-Student-Guiji/main.go:251","msg":"ALTER TABLE语句执行失败（可能列已存在）","error":"duplicate column name: mime_type","sql":"ALTER TABLE images ADD COLUMN mime_type TEXT DEFAULT '';"}
 {"level":"info","time":"2025-06-03T23:25:38.192+0800","caller":"hsy-Student-Guiji/main.go:279","msg":"数据库迁移完成"}
+{"level":"info","time":"2025-06-03T23:49:39.896+0800","caller":"hsy-Student-Guiji/main.go:229","msg":"更新标记点","id":"9","latitude":30.455778,"longitude":114.389031}
+{"level":"info","time":"2025-06-03T23:49:43.229+0800","caller":"hsy-Student-Guiji/main.go:229","msg":"更新标记点","id":"9","latitude":30.455778,"longitude":114.389031}

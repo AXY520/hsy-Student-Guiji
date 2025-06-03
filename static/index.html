@@ -5,61 +5,178 @@
     <title>学生动态轨迹</title>
     <link rel="stylesheet" href="https://unpkg.com/element-ui/lib/theme-chalk/index.css">
     <style>
+        :root {
+            --primary-color: #409EFF;
+            --success-color: #67C23A;
+            --warning-color: #E6A23C;
+            --danger-color: #F56C6C;
+            --info-color: #909399;
+            --text-primary: #303133;
+            --text-regular: #606266;
+            --text-secondary: #909399;
+            --border-light: #EBEEF5;
+            --bg-color: #F5F7FA;
+            --glass-bg: rgba(255, 255, 255, 0.85);
+            --glass-border: rgba(255, 255, 255, 0.3);
+            --shadow-light: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
+            --shadow-medium: 0 4px 20px 0 rgba(0, 0, 0, 0.15);
+            --shadow-heavy: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+            --border-radius: 12px;
+            --border-radius-small: 8px;
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
         html, body {
             margin: 0;
             padding: 0;
             height: 100%;
             width: 100%;
-            font-family: 'PingFang SC', 'Microsoft YaHei', sans-serif;
-            background: linear-gradient(to right, #ece9e6, #ffffff);
+            font-family: 'PingFang SC', 'Helvetica Neue', 'Microsoft YaHei', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
         }
+
         #app, #container {
             width: 100%;
             height: 100%;
+            position: relative;
+        }
+
+        /* 添加加载动画 */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s ease;
+        }
+
+        .loading-spinner {
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
         .marker-form {
             position: fixed;
             top: 20px;
             right: 20px;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 20px;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 24px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--glass-border);
             z-index: 999;
-            max-width: 400px;
+            max-width: 420px;
+            min-width: 350px;
+            transition: var(--transition);
+            animation: slideInRight 0.5s ease-out;
         }
+
+        .marker-form:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.4);
+        }
+
         .map-controls {
             position: fixed;
             top: 20px;
             left: 20px;
             z-index: 999;
             display: flex;
-            gap: 10px;
-            background: rgba(255, 255, 255, 0.8);
-            backdrop-filter: blur(10px);
-            -webkit-backdrop-filter: blur(10px);
-            padding: 10px;
-            border-radius: 10px;
-            box-shadow: 0 4px 16px 0 rgba(31, 38, 135, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            align-items: center;
+            gap: 12px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 16px 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--glass-border);
+            transition: var(--transition);
+            animation: slideInLeft 0.5s ease-out;
+        }
+
+        .map-controls:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.4);
+        }
+
+        /* 添加动画效果 */
+        @keyframes slideInRight {
+            from {
+                transform: translateX(100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes slideInLeft {
+            from {
+                transform: translateX(-100%);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
+        }
+
+        @keyframes fadeInUp {
+            from {
+                transform: translateY(30px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
         .thumbnail-container {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-top: 10px;
-            margin-bottom: 10px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 12px;
+            margin-top: 16px;
+            margin-bottom: 16px;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius-small);
+            backdrop-filter: blur(10px);
         }
+
         .thumbnail {
-            width: 100px;
+            width: 100%;
             height: 100px;
             object-fit: cover;
             cursor: pointer;
-            border-radius: 4px;
-            transition: transform 0.3s ease;
+            border-radius: var(--border-radius-small);
+            transition: var(--transition);
+            border: 2px solid transparent;
+            box-shadow: var(--shadow-light);
+        }
+
+        .thumbnail:hover {
+            transform: scale(1.05) translateY(-2px);
+            border-color: var(--primary-color);
+            box-shadow: var(--shadow-medium);
         }
         .el-dialog__body img {
             max-width: 95vw;
@@ -113,31 +230,69 @@
                 height: 80px;
             }
         }
-        /* 修改自定义标记点样式 */
+        /* 现代化标记点样式 */
         .custom-marker {
-            width: 30px;
-            height: 30px;
+            width: 36px;
+            height: 36px;
             border-radius: 50%;
             color: white;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+            font-size: 13px;
+            font-weight: 600;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 2px 4px rgba(0, 0, 0, 0.1);
             cursor: pointer;
-            transition: transform 0.2s, background-color 0.2s;
+            transition: var(--transition);
+            border: 3px solid rgba(255, 255, 255, 0.9);
+            position: relative;
+            overflow: hidden;
         }
+
+        .custom-marker::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(45deg, rgba(255, 255, 255, 0.2), transparent);
+            border-radius: 50%;
+            pointer-events: none;
+        }
+
         .custom-marker:hover {
-            transform: scale(1.1);
-            filter: brightness(1.1);
+            transform: scale(1.15) translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3), 0 4px 8px rgba(0, 0, 0, 0.15);
         }
-        /* 移除预设的样式，改为自定义颜色 */
+
+        .custom-marker:active {
+            transform: scale(1.05);
+        }
+
         .custom-marker.sufficient {
-            background-color: #409EFF;  /* 蓝色表示数量充足 - 作为默认值 */
+            background: linear-gradient(135deg, #409EFF, #66b1ff);
         }
+
         .custom-marker.insufficient {
-            background-color: #F56C6C;  /* 红色表示数量不足 - 作为默认值 */
+            background: linear-gradient(135deg, #F56C6C, #f78989);
+        }
+
+        /* 添加脉冲动画效果 */
+        .custom-marker.pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(64, 158, 255, 0.7);
+            }
+            70% {
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 0 0 10px rgba(64, 158, 255, 0);
+            }
+            100% {
+                box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25), 0 0 0 0 rgba(64, 158, 255, 0);
+            }
         }
         /* 添加图片预览相关样式 */
         .overlay {
@@ -220,28 +375,234 @@
         .color-yellow {
             background-color: #E6A23C;
         }
+
+        /* 统计面板样式 */
+        .stats-panel {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 20px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--glass-border);
+            z-index: 999;
+            min-width: 200px;
+            animation: fadeInUp 0.5s ease-out;
+        }
+
+        .stats-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .stats-item:last-child {
+            margin-bottom: 0;
+            border-bottom: none;
+        }
+
+        .stats-label {
+            color: var(--text-regular);
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .stats-value {
+            color: var(--text-primary);
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        /* 状态指示器 */
+        .status-indicator {
+            position: fixed;
+            top: 50%;
+            right: 20px;
+            transform: translateY(-50%);
+            background: var(--glass-bg);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            padding: 16px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow-heavy);
+            border: 1px solid var(--glass-border);
+            z-index: 999;
+            animation: slideInRight 0.5s ease-out 0.3s both;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            margin-bottom: 12px;
+            font-size: 14px;
+        }
+
+        .status-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+            box-shadow: 0 0 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .status-dot.sufficient {
+            background: linear-gradient(135deg, #67C23A, #85ce61);
+        }
+
+        .status-dot.insufficient {
+            background: linear-gradient(135deg, #F56C6C, #f78989);
+        }
+
+        /* 工具提示样式 */
+        .tooltip {
+            position: relative;
+            cursor: help;
+        }
+
+        .tooltip::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 12px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+
+        .tooltip:hover::after {
+            opacity: 1;
+        }
+
+        /* 改进按钮样式 */
+        .el-button {
+            border-radius: var(--border-radius-small) !important;
+            font-weight: 500 !important;
+            transition: var(--transition) !important;
+        }
+
+        .el-button:hover {
+            transform: translateY(-1px) !important;
+        }
+
+        /* 改进表单样式 */
+        .el-form-item__label {
+            font-weight: 500 !important;
+            color: var(--text-primary) !important;
+        }
+
+        .el-input__inner {
+            border-radius: var(--border-radius-small) !important;
+            border: 1px solid var(--border-light) !important;
+            transition: var(--transition) !important;
+        }
+
+        .el-input__inner:focus {
+            border-color: var(--primary-color) !important;
+            box-shadow: 0 0 0 2px rgba(64, 158, 255, 0.2) !important;
+        }
     </style>
 </head>
 <body>
     <div id="app">
+        <!-- 加载动画 -->
+        <div class="loading-overlay" v-if="loading">
+            <div class="loading-spinner"></div>
+        </div>
+
         <div id="container"></div>
+
+        <!-- 地图控制面板 -->
         <div class="map-controls">
             <el-button-group>
-                <el-button 
-                    :type="mapType === 'normal' ? 'primary' : ''" 
-                    size="small" 
+                <el-button
+                    :type="mapType === 'normal' ? 'primary' : ''"
+                    size="small"
+                    icon="el-icon-map-location"
                     @click="switchMapType('normal')">
                     2D地图
                 </el-button>
-                <el-button 
-                    :type="mapType === 'satellite' ? 'primary' : ''" 
-                    size="small" 
+                <el-button
+                    :type="mapType === 'satellite' ? 'primary' : ''"
+                    size="small"
+                    icon="el-icon-picture"
                     @click="switchMapType('satellite')">
                     卫星图
                 </el-button>
             </el-button-group>
-            <el-button type="success" size="small" @click="generateReport" style="margin-left: 10px;">生成报告</el-button>
-            <el-button type="danger" size="small" @click="logout" style="margin-left: 10px;">退出登录</el-button>
+
+            <el-divider direction="vertical"></el-divider>
+
+            <el-button
+                type="success"
+                size="small"
+                icon="el-icon-document"
+                @click="generateReport"
+                class="tooltip"
+                data-tooltip="导出统计报告">
+                生成报告
+            </el-button>
+
+            <el-button
+                type="danger"
+                size="small"
+                icon="el-icon-switch-button"
+                @click="logout"
+                class="tooltip"
+                data-tooltip="退出登录">
+                退出
+            </el-button>
+        </div>
+
+        <!-- 统计面板 -->
+        <div class="stats-panel" v-if="!showForm">
+            <div class="stats-item">
+                <span class="stats-label">标记点总数</span>
+                <span class="stats-value">{{ totalMarkers }}</span>
+            </div>
+            <div class="stats-item">
+                <span class="stats-label">充足点位</span>
+                <span class="stats-value" style="color: var(--success-color)">{{ sufficientCount }}</span>
+            </div>
+            <div class="stats-item">
+                <span class="stats-label">不足点位</span>
+                <span class="stats-value" style="color: var(--danger-color)">{{ insufficientCount }}</span>
+            </div>
+            <div class="stats-item">
+                <span class="stats-label">完成率</span>
+                <span class="stats-value" :style="{ color: completionRate >= 80 ? 'var(--success-color)' : 'var(--warning-color)' }">
+                    {{ completionRate }}%
+                </span>
+            </div>
+        </div>
+
+        <!-- 状态指示器 -->
+        <div class="status-indicator" v-if="!showForm">
+            <div class="status-item">
+                <div class="status-dot sufficient"></div>
+                <span>数量充足</span>
+            </div>
+            <div class="status-item">
+                <div class="status-dot insufficient"></div>
+                <span>数量不足</span>
+            </div>
         </div>
         <div class="marker-form" v-if="showForm">
             <el-form :model="form" label-width="120px">
@@ -372,8 +733,10 @@
         new Vue({
             el: '#app',
             data: {
+                loading: true,
                 map: null,
                 marker: null,
+                markers: [],
                 showForm: false,
                 isExistingMarker: false,
                 dialogVisible: false,
@@ -402,6 +765,21 @@
                 // 存储所有标记点的颜色设置
                 markerColors: {}
             },
+            computed: {
+                totalMarkers() {
+                    return this.markers.length;
+                },
+                sufficientCount() {
+                    return this.markers.filter(marker => marker.value >= marker.required_value).length;
+                },
+                insufficientCount() {
+                    return this.markers.filter(marker => marker.value < marker.required_value).length;
+                },
+                completionRate() {
+                    if (this.totalMarkers === 0) return 0;
+                    return Math.round((this.sufficientCount / this.totalMarkers) * 100);
+                }
+            },
             watch: {
                 dialogVisible(val) {
                     if (val) {
@@ -411,20 +789,36 @@
                     }
                 }
             },
-            mounted() {
+            async mounted() {
                 // 检查登录状态
                 if (localStorage.getItem('isLoggedIn') !== 'true') {
                     window.location.href = '/login';
                     return;
                 }
-                
-                // 从localStorage加载颜色设置
-                const savedColors = localStorage.getItem('markerColors');
-                if (savedColors) {
-                    this.markerColors = JSON.parse(savedColors);
+
+                try {
+                    // 从localStorage加载颜色设置
+                    const savedColors = localStorage.getItem('markerColors');
+                    if (savedColors) {
+                        this.markerColors = JSON.parse(savedColors);
+                    }
+
+                    // 初始化地图
+                    await this.initMap();
+
+                    // 加载标记点
+                    await this.loadMarkers();
+
+                    // 延迟隐藏加载动画，让用户看到加载过程
+                    setTimeout(() => {
+                        this.loading = false;
+                    }, 800);
+
+                } catch (error) {
+                    console.error('初始化失败:', error);
+                    this.$message.error('系统初始化失败');
+                    this.loading = false;
                 }
-                
-                this.initMap();
             },
             methods: {
                 initMap() {
@@ -451,15 +845,15 @@
 
                         // 创建新标记点时使用自定义样式
                         const markerContent = document.createElement('div');
-                        markerContent.className = 'custom-marker insufficient';
+                        markerContent.className = 'custom-marker insufficient pulse';
                         markerContent.innerHTML = '0';
-                        markerContent.style.backgroundColor = this.form.insufficientColor;
+                        markerContent.style.background = 'linear-gradient(135deg, #F56C6C, #f78989)';
 
                         this.marker = new AMap.Marker({
                             position: [lnglat.getLng(), lnglat.getLat()],
                             map: this.map,
                             content: markerContent,
-                            offset: new AMap.Pixel(-15, -15)
+                            offset: new AMap.Pixel(-18, -18)
                         });
 
                         this.form.latitude = lnglat.getLat();
@@ -470,7 +864,7 @@
                         this.form.required_value = 0;
                         this.form.files = [];
                         this.form.images = [];
-                        
+
                         // 设置默认颜色
                         this.form.sufficientColor = this.markerColors.defaultSufficient || '#409EFF';
                         this.form.insufficientColor = this.markerColors.defaultInsufficient || '#F56C6C';
