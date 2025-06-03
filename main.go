@@ -48,60 +48,28 @@ func initDB(dbPath string) *sql.DB {
 	// 创建所有必要的表
 	createTables(db)
 
-	// 检查schema_version表是否存在
-	var tableExists int
-	err = db.QueryRow("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'").Scan(&tableExists)
-	if err != nil {
-		logger.Log.Fatal("检查schema_version表失败", zap.Error(err))
-	}
-
-	if tableExists == 0 {
-		// 初始化schema_version表
-		if _, err := db.Exec("CREATE TABLE schema_version (id INTEGER PRIMARY KEY, version INTEGER NOT NULL DEFAULT 1)"); err != nil {
-			logger.Log.Fatal("创建schema_version表失败", zap.Error(err))
-		}
-		if _, err := db.Exec("INSERT INTO schema_version (id, version) VALUES (1, 1)"); err != nil {
-			logger.Log.Fatal("初始化schema_version失败", zap.Error(err))
-		}
-	}
-
-	// 获取当前版本
-	var version int
-	err = db.QueryRow("SELECT version FROM schema_version WHERE id = 1").Scan(&version)
-	if err != nil {
-		logger.Log.Fatal("获取schema版本失败", zap.Error(err))
-	}
-
-	if version < 2 {
-		// 执行迁移
-		migrateToVersion2(db)
-		_, err = db.Exec("UPDATE schema_version SET version = 2 WHERE id = 1")
-		if err != nil {
-			logger.Log.Fatal("更新 schema 版本失败", zap.Error(err))
-		}
-	}
-
 	return db
 }
 
 func createTables(db *sql.DB) {
 	sqlStmt := `
-	CREATE TABLE IF NOT EXISTS schema_version (
-		id INTEGER PRIMARY KEY,
-		version INTEGER NOT NULL DEFAULT 1
-	);
 	CREATE TABLE IF NOT EXISTS markers (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		latitude REAL,
-		longitude REAL,
+		latitude REAL NOT NULL,
+		longitude REAL NOT NULL,
 		value REAL DEFAULT 0,
-		required_value REAL DEFAULT 0
+		required_value REAL DEFAULT 0,
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
 	CREATE TABLE IF NOT EXISTS images (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
-		marker_id INTEGER,
-		filename TEXT,
-		FOREIGN KEY(marker_id) REFERENCES markers(id)
+		marker_id INTEGER NOT NULL,
+		filename TEXT NOT NULL,
+		file_size INTEGER DEFAULT 0,
+		mime_type TEXT DEFAULT '',
+		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+		FOREIGN KEY(marker_id) REFERENCES markers(id) ON DELETE CASCADE
 	);
 	CREATE TABLE IF NOT EXISTS visits (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -119,64 +87,58 @@ func createTables(db *sql.DB) {
 		action_detail TEXT,
 		target_id TEXT,
 		action_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-	);`
+	);
+
+	-- 创建索引
+	CREATE INDEX IF NOT EXISTS idx_markers_location ON markers(latitude, longitude);
+	CREATE INDEX IF NOT EXISTS idx_markers_created_at ON markers(created_at);
+	CREATE INDEX IF NOT EXISTS idx_images_marker_id ON images(marker_id);
+	CREATE INDEX IF NOT EXISTS idx_visits_ip ON visits(ip);
+	CREATE INDEX IF NOT EXISTS idx_visits_visit_time ON visits(visit_time);
+	CREATE INDEX IF NOT EXISTS idx_user_actions_ip ON user_actions(ip);
+	CREATE INDEX IF NOT EXISTS idx_user_actions_action_time ON user_actions(action_time);
+	CREATE INDEX IF NOT EXISTS idx_user_actions_action_type ON user_actions(action_type);
+
+	-- 创建触发器
+	CREATE TRIGGER IF NOT EXISTS update_markers_updated_at
+		AFTER UPDATE ON markers
+		FOR EACH ROW
+		BEGIN
+		    UPDATE markers SET updated_at = CURRENT_TIMESTAMP WHERE id = NEW.id;
+		END;
+
+	-- 创建视图
+	CREATE VIEW IF NOT EXISTS marker_summary AS
+	SELECT
+	    m.id,
+	    m.latitude,
+	    m.longitude,
+	    m.value,
+	    m.required_value,
+	    m.created_at,
+	    m.updated_at,
+	    COUNT(i.id) as image_count,
+	    CASE
+	        WHEN m.value >= m.required_value THEN 'sufficient'
+	        ELSE 'insufficient'
+	    END as status
+	FROM markers m
+	LEFT JOIN images i ON m.id = i.marker_id
+	GROUP BY m.id;
+
+	CREATE VIEW IF NOT EXISTS visit_stats AS
+	SELECT
+	    ip,
+	    user_agent,
+	    COUNT(*) as visit_count,
+	    MAX(visit_time) as last_visit,
+	    MIN(visit_time) as first_visit,
+	    COUNT(DISTINCT path) as unique_paths
+	FROM visits
+	GROUP BY ip, user_agent;`
+
 	if _, err := db.Exec(sqlStmt); err != nil {
 		logger.Log.Fatal("创建表失败", zap.Error(err))
-	}
-}
-
-func migrateToVersion2(db *sql.DB) {
-	// 检查是否存在旧表
-	var hasOldTable bool
-	err := db.QueryRow(`
-		SELECT COUNT(*) FROM sqlite_master 
-		WHERE type='table' AND name='markers' 
-		AND sql LIKE '%description%'`).Scan(&hasOldTable)
-	if err != nil {
-		logger.Log.Fatal("检查旧表结构失败", zap.Error(err))
-	}
-
-	if hasOldTable {
-		// 备份旧数据
-		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS markers_backup AS SELECT * FROM markers;`)
-		if err != nil {
-			logger.Log.Fatal("备份数据失败", zap.Error(err))
-		}
-		_, err = db.Exec(`CREATE TABLE IF NOT EXISTS images_backup AS SELECT * FROM images;`)
-		if err != nil {
-			logger.Log.Fatal("备份图片数据失败", zap.Error(err))
-		}
-
-		// 删除旧表
-		_, err = db.Exec(`DROP TABLE markers; DROP TABLE images;`)
-		if err != nil {
-			logger.Log.Fatal("删除旧表失败", zap.Error(err))
-		}
-
-		// 重新创建表
-		createTables(db)
-
-		// 迁移数据
-		_, err = db.Exec(`
-			INSERT INTO markers (id, latitude, longitude, value, required_value)
-			SELECT id, latitude, longitude, 0, 0 FROM markers_backup;
-		`)
-		if err != nil {
-			logger.Log.Fatal("迁移数据失败", zap.Error(err))
-		}
-		_, err = db.Exec(`
-			INSERT INTO images (marker_id, filename)
-			SELECT marker_id, filename FROM images_backup;
-		`)
-		if err != nil {
-			logger.Log.Fatal("迁移图片数据失败", zap.Error(err))
-		}
-
-		// 删除备份表
-		_, err = db.Exec(`DROP TABLE markers_backup; DROP TABLE images_backup;`)
-		if err != nil {
-			logger.Log.Fatal("删除备份表失败", zap.Error(err))
-		}
 	}
 }
 
@@ -188,15 +150,6 @@ func errorHandler() gin.HandlerFunc {
 			logger.Log.Error("请求处理失败", zap.Error(err), zap.String("request_id", c.GetString("request_id")))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
-	}
-}
-
-func requestIDMiddleware() gin.HandlerFunc {
-	return func(c *gin.Context) {
-		requestID := fmt.Sprintf("%d", time.Now().UnixNano())
-		c.Set("request_id", requestID)
-		logger.Log = logger.Log.With(zap.String("request_id", requestID))
-		c.Next()
 	}
 }
 
@@ -787,51 +740,4 @@ func main() {
 	if err := srv.Shutdown(ctx); err != nil {
 		logger.Log.Fatal("服务器关闭失败", zap.Error(err))
 	}
-}
-
-func handleDeleteMarker(c *gin.Context, db *sql.DB, uploadDir string) {
-	id := c.Param("id")
-
-	rows, err := db.Query("SELECT filename FROM images WHERE marker_id = ?", id)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var filename string
-		if err := rows.Scan(&filename); err != nil {
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-
-		safeFilename := filepath.Base(filename)
-		filePath := filepath.Join(uploadDir, safeFilename)
-
-		if !strings.HasPrefix(filePath, uploadDir) {
-			logger.Log.Warn("非法文件路径",
-				zap.String("filename", filename),
-				zap.String("resolved", filePath))
-			continue
-		}
-
-		if err := os.Remove(filePath); err != nil && !os.IsNotExist(err) {
-			logger.Log.Error("删除文件失败",
-				zap.String("path", filePath),
-				zap.Error(err))
-		}
-	}
-
-	if _, err := db.Exec("DELETE FROM images WHERE marker_id = ?", id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	if _, err := db.Exec("DELETE FROM markers WHERE id = ?", id); err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "删除成功"})
 }

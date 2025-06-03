@@ -1,10 +1,13 @@
 server:
   port: 8080
+  host: "0.0.0.0"
   upload_dir: "./uploads"
   max_file_size: 10485760  # 10MB in bytes
+  read_timeout: 30
+  write_timeout: 30
 
 map:
-  api_key: "c83c955371f66936b2bb0115c6a5b1b1"
+  api_key: "c83c955371f66936b2bb0115c6a5b1b1" # 使用环境变量，避免硬编码敏感信息
   default_center:
     latitude: 30.454407
     longitude: 114.390521
@@ -12,7 +15,23 @@ map:
 
 database:
   path: "./markers.db"
+  max_open_conns: 10
+  max_idle_conns: 5
+  conn_max_lifetime: 3600  # seconds
 
 logging:
   level: "info"
-  file: "./logs/app.log" 
+  file: "./logs/app.log"
+
+security:
+  enable_https: false
+  cert_file: ""
+  key_file: ""
+  allowed_origins:
+    - "http://localhost:8080"
+    - "http://127.0.0.1:8080"
+  ip_whitelist: []  # 空数组表示允许所有IP
+
+rate_limit:
+  requests_per_second: 10
+  burst: 20
