@@ -559,50 +559,6 @@
                 data-tooltip="导出统计报告">
                 生成报告
             </el-button>
-
-            <el-button
-                type="danger"
-                size="small"
-                icon="el-icon-switch-button"
-                @click="logout"
-                class="tooltip"
-                data-tooltip="退出登录">
-                退出
-            </el-button>
-        </div>
-
-        <!-- 统计面板 -->
-        <div class="stats-panel" v-if="!showForm">
-            <div class="stats-item">
-                <span class="stats-label">标记点总数</span>
-                <span class="stats-value">{{ totalMarkers }}</span>
-            </div>
-            <div class="stats-item">
-                <span class="stats-label">充足点位</span>
-                <span class="stats-value" style="color: var(--success-color)">{{ sufficientCount }}</span>
-            </div>
-            <div class="stats-item">
-                <span class="stats-label">不足点位</span>
-                <span class="stats-value" style="color: var(--danger-color)">{{ insufficientCount }}</span>
-            </div>
-            <div class="stats-item">
-                <span class="stats-label">完成率</span>
-                <span class="stats-value" :style="{ color: completionRate >= 80 ? 'var(--success-color)' : 'var(--warning-color)' }">
-                    {{ completionRate }}%
-                </span>
-            </div>
-        </div>
-
-        <!-- 状态指示器 -->
-        <div class="status-indicator" v-if="!showForm">
-            <div class="status-item">
-                <div class="status-dot sufficient"></div>
-                <span>数量充足</span>
-            </div>
-            <div class="status-item">
-                <div class="status-dot insufficient"></div>
-                <span>数量不足</span>
-            </div>
         </div>
         <div class="marker-form" v-if="showForm">
             <el-form :model="form" label-width="120px">
@@ -626,43 +582,13 @@
                         style="width: 100%;">
                     </el-input-number>
                 </el-form-item>
-                <el-form-item label="充足状态颜色">
-                    <div class="color-options">
-                        <div 
-                            class="color-option color-blue" 
-                            :class="{ selected: form.sufficientColor === '#409EFF' }"
-                            @click="selectSufficientColor('#409EFF')">
-                        </div>
-                        <div 
-                            class="color-option color-red" 
-                            :class="{ selected: form.sufficientColor === '#F56C6C' }"
-                            @click="selectSufficientColor('#F56C6C')">
-                        </div>
-                        <div 
-                            class="color-option color-yellow" 
-                            :class="{ selected: form.sufficientColor === '#E6A23C' }"
-                            @click="selectSufficientColor('#E6A23C')">
-                        </div>
-                    </div>
-                </el-form-item>
-                <el-form-item label="不足状态颜色">
-                    <div class="color-options">
-                        <div 
-                            class="color-option color-blue" 
-                            :class="{ selected: form.insufficientColor === '#409EFF' }"
-                            @click="selectInsufficientColor('#409EFF')">
-                        </div>
-                        <div 
-                            class="color-option color-red" 
-                            :class="{ selected: form.insufficientColor === '#F56C6C' }"
-                            @click="selectInsufficientColor('#F56C6C')">
-                        </div>
-                        <div 
-                            class="color-option color-yellow" 
-                            :class="{ selected: form.insufficientColor === '#E6A23C' }"
-                            @click="selectInsufficientColor('#E6A23C')">
-                        </div>
-                    </div>
+                <el-form-item label="描述信息">
+                    <el-input
+                        type="textarea"
+                        v-model="form.description"
+                        :rows="3"
+                        placeholder="请输入点位描述信息">
+                    </el-input>
                 </el-form-item>
                 <el-form-item v-if="isExistingMarker && form.images && form.images.length > 0" label="已有图片">
                     <div class="thumbnail-container">
@@ -748,6 +674,7 @@
                     longitude: null,
                     value: 0,
                     required_value: 0,
+                    description: '',
                     files: [],
                     images: [],
                     sufficientColor: '#409EFF',   // 默认充足状态颜色（蓝色）
@@ -761,9 +688,7 @@
                 dragStartX: 0,
                 dragStartY: 0,
                 imgStartX: 0,
-                imgStartY: 0,
-                // 存储所有标记点的颜色设置
-                markerColors: {}
+                imgStartY: 0
             },
             computed: {
                 totalMarkers() {
@@ -790,19 +715,7 @@
                 }
             },
             async mounted() {
-                // 检查登录状态
-                if (localStorage.getItem('isLoggedIn') !== 'true') {
-                    window.location.href = '/login';
-                    return;
-                }
-
                 try {
-                    // 从localStorage加载颜色设置
-                    const savedColors = localStorage.getItem('markerColors');
-                    if (savedColors) {
-                        this.markerColors = JSON.parse(savedColors);
-                    }
-
                     // 初始化地图
                     await this.initMap();
 
@@ -862,12 +775,13 @@
                         this.isExistingMarker = false;
                         this.form.value = 0;
                         this.form.required_value = 0;
+                        this.form.description = '';
                         this.form.files = [];
                         this.form.images = [];
 
                         // 设置默认颜色
-                        this.form.sufficientColor = this.markerColors.defaultSufficient || '#409EFF';
-                        this.form.insufficientColor = this.markerColors.defaultInsufficient || '#F56C6C';
+                        this.form.sufficientColor = '#409EFF';
+                        this.form.insufficientColor = '#F56C6C';
                     });
                 },
                 updateMarkerColor() {
@@ -878,13 +792,6 @@
                             const isSufficient = this.form.value >= this.form.required_value;
                             content.style.backgroundColor = isSufficient ? this.form.sufficientColor : this.form.insufficientColor;
                         }
-                    }
-                    
-                    // 保存默认颜色设置到localStorage
-                    if (!this.isExistingMarker) {
-                        this.markerColors.defaultSufficient = this.form.sufficientColor;
-                        this.markerColors.defaultInsufficient = this.form.insufficientColor;
-                        localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
                     }
                 },
                 selectSufficientColor(color) {
@@ -912,20 +819,14 @@
                     axios.get('/api/markers')
                         .then(response => {
                             response.data.forEach(marker => {
-                                // 获取该标记点的颜色设置，如果没有则使用默认值
-                                const markerColorSettings = this.markerColors[marker.id] || {
-                                    sufficient: this.markerColors.defaultSufficient || '#409EFF',
-                                    insufficient: this.markerColors.defaultInsufficient || '#F56C6C'
-                                };
-                                
                                 // 创建自定义标记点内容
                                 const markerContent = document.createElement('div');
                                 const isSufficient = marker.value >= marker.required_value;
                                 markerContent.className = 'custom-marker ' + (isSufficient ? 'sufficient' : 'insufficient');
                                 markerContent.innerHTML = marker.value.toString();
                                 markerContent.style.backgroundColor = isSufficient 
-                                    ? markerColorSettings.sufficient 
-                                    : markerColorSettings.insufficient;
+                                    ? marker.sufficient_color || '#409EFF'
+                                    : marker.insufficient_color || '#F56C6C';
 
                                 const markerObj = new AMap.Marker({
                                     position: [marker.longitude, marker.latitude],
@@ -940,11 +841,12 @@
                                     this.form.longitude = marker.longitude;
                                     this.form.value = marker.value;
                                     this.form.required_value = marker.required_value;
+                                    this.form.description = marker.description || '';
                                     this.form.images = marker.images || [];
                                     
                                     // 加载该标记点的颜色设置
-                                    this.form.sufficientColor = markerColorSettings.sufficient;
-                                    this.form.insufficientColor = markerColorSettings.insufficient;
+                                    this.form.sufficientColor = marker.sufficient_color || '#409EFF';
+                                    this.form.insufficientColor = marker.insufficient_color || '#F56C6C';
                                     
                                     this.showForm = true;
                                     this.isExistingMarker = true;
@@ -975,7 +877,10 @@
                             latitude: this.form.latitude,
                             longitude: this.form.longitude,
                             value: this.form.value,
-                            required_value: this.form.required_value
+                            required_value: this.form.required_value,
+                            description: this.form.description,
+                            sufficient_color: this.form.sufficientColor,
+                            insufficient_color: this.form.insufficientColor
                         });
 
                         if (this.form.files.length > 0) {
@@ -986,13 +891,6 @@
                             await axios.post(`/api/markers/${markerResponse.data.id}/images`, formData);
                         }
                         
-                        // 保存该标记点的颜色设置
-                        this.markerColors[markerResponse.data.id] = {
-                            sufficient: this.form.sufficientColor,
-                            insufficient: this.form.insufficientColor
-                        };
-                        localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
-
                         this.$message.success('保存成功');
                         this.closeForm();
                         this.loadMarkers();
@@ -1010,12 +908,6 @@
                         });
                         
                         await axios.delete(`/api/markers/${this.form.id}`);
-                        
-                        // 删除该标记点的颜色设置
-                        if (this.markerColors[this.form.id]) {
-                            delete this.markerColors[this.form.id];
-                            localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
-                        }
                         
                         this.$message.success('删除成功');
                         this.closeForm();
@@ -1055,7 +947,10 @@
                             latitude: this.form.latitude,
                             longitude: this.form.longitude,
                             value: this.form.value,
-                            required_value: this.form.required_value
+                            required_value: this.form.required_value,
+                            description: this.form.description,
+                            sufficient_color: this.form.sufficientColor,
+                            insufficient_color: this.form.insufficientColor
                         });
 
                         // 上传新图片（如果有）
@@ -1067,13 +962,6 @@
                             await axios.post(`/api/markers/${this.form.id}/images`, formData);
                         }
                         
-                        // 保存该标记点的颜色设置
-                        this.markerColors[this.form.id] = {
-                            sufficient: this.form.sufficientColor,
-                            insufficient: this.form.insufficientColor
-                        };
-                        localStorage.setItem('markerColors', JSON.stringify(this.markerColors));
-
                         this.$message.success('更新成功');
                         this.closeForm();
                         this.loadMarkers();
@@ -1089,6 +977,7 @@
                     this.form.longitude = null;
                     this.form.value = 0;
                     this.form.required_value = 0;
+                    this.form.description = '';
                     this.form.files = [];
                     this.form.images = [];
                     this.isExistingMarker = false;
@@ -1133,16 +1022,6 @@
                 },
                 onMouseUp() {
                     this.dragging = false;
-                },
-                logout() {
-                    this.$confirm('确定要退出登录吗？', '提示', {
-                        confirmButtonText: '确定',
-                        cancelButtonText: '取消',
-                        type: 'warning'
-                    }).then(() => {
-                        localStorage.removeItem('isLoggedIn');
-                        window.location.href = '/login';
-                    }).catch(() => {});
                 },
                 generateReport() {
                     window.location.href = '/pdf-report';

@@ -22,12 +22,15 @@ import (
 )
 
 type Marker struct {
-	ID            int      `json:"id"`
-	Latitude      float64  `json:"latitude"`
-	Longitude     float64  `json:"longitude"`
-	Value         float64  `json:"value"`
-	RequiredValue float64  `json:"required_value"`
-	Images        []string `json:"images"`
+	ID                int      `json:"id"`
+	Latitude          float64  `json:"latitude"`
+	Longitude         float64  `json:"longitude"`
+	Value             float64  `json:"value"`
+	RequiredValue     float64  `json:"required_value"`
+	Description       string   `json:"description"`
+	SufficientColor   string   `json:"sufficient_color"`
+	InsufficientColor string   `json:"insufficient_color"`
+	Images            []string `json:"images"`
 }
 
 type App struct {
@@ -48,6 +51,9 @@ func initDB(dbPath string) *sql.DB {
 	// 创建所有必要的表
 	createTables(db)
 
+	// 运行迁移
+	migrateDatabase(db)
+
 	return db
 }
 
@@ -59,6 +65,9 @@ func createTables(db *sql.DB) {
 		longitude REAL NOT NULL,
 		value REAL DEFAULT 0,
 		required_value REAL DEFAULT 0,
+		description TEXT DEFAULT '',
+		sufficient_color TEXT DEFAULT '#409EFF',
+		insufficient_color TEXT DEFAULT '#F56C6C',
 		created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
 		updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 	);
@@ -142,6 +151,77 @@ func createTables(db *sql.DB) {
 	}
 }
 
+func migrateDatabase(db *sql.DB) {
+	// 检查 markers 表是否有 description 列
+	var hasDescriptionColumn bool
+	err := db.QueryRow(`
+		SELECT COUNT(*) > 0 
+		FROM pragma_table_info('markers') 
+		WHERE name = 'description'
+	`).Scan(&hasDescriptionColumn)
+
+	if err != nil {
+		logger.Log.Error("检查 description 列失败", zap.Error(err))
+		return
+	}
+
+	// 如果没有 description 列，添加它
+	if !hasDescriptionColumn {
+		_, err = db.Exec(`ALTER TABLE markers ADD COLUMN description TEXT DEFAULT ''`)
+		if err != nil {
+			logger.Log.Error("添加 description 列失败", zap.Error(err))
+			return
+		}
+		logger.Log.Info("成功添加 description 列到 markers 表")
+	}
+
+	// 检查 markers 表是否有 sufficient_color 列
+	var hasSufficientColorColumn bool
+	err = db.QueryRow(`
+		SELECT COUNT(*) > 0 
+		FROM pragma_table_info('markers') 
+		WHERE name = 'sufficient_color'
+	`).Scan(&hasSufficientColorColumn)
+
+	if err != nil {
+		logger.Log.Error("检查 sufficient_color 列失败", zap.Error(err))
+		return
+	}
+
+	// 检查 markers 表是否有 insufficient_color 列
+	var hasInsufficientColorColumn bool
+	err = db.QueryRow(`
+		SELECT COUNT(*) > 0 
+		FROM pragma_table_info('markers') 
+		WHERE name = 'insufficient_color'
+	`).Scan(&hasInsufficientColorColumn)
+
+	if err != nil {
+		logger.Log.Error("检查 insufficient_color 列失败", zap.Error(err))
+		return
+	}
+
+	// 如果没有 sufficient_color 列，添加它
+	if !hasSufficientColorColumn {
+		_, err = db.Exec(`ALTER TABLE markers ADD COLUMN sufficient_color TEXT DEFAULT '#409EFF'`)
+		if err != nil {
+			logger.Log.Error("添加 sufficient_color 列失败", zap.Error(err))
+			return
+		}
+		logger.Log.Info("成功添加 sufficient_color 列到 markers 表")
+	}
+
+	// 如果没有 insufficient_color 列，添加它
+	if !hasInsufficientColorColumn {
+		_, err = db.Exec(`ALTER TABLE markers ADD COLUMN insufficient_color TEXT DEFAULT '#F56C6C'`)
+		if err != nil {
+			logger.Log.Error("添加 insufficient_color 列失败", zap.Error(err))
+			return
+		}
+		logger.Log.Info("成功添加 insufficient_color 列到 markers 表")
+	}
+}
+
 func errorHandler() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Next()
@@ -161,8 +241,16 @@ func (app *App) CreateMarker(c *gin.Context) {
 		return
 	}
 
-	result, err := app.DB.Exec("INSERT INTO markers (latitude, longitude, value, required_value) VALUES (?, ?, ?, ?)",
-		marker.Latitude, marker.Longitude, marker.Value, marker.RequiredValue)
+	// 设置默认颜色（如果未提供）
+	if marker.SufficientColor == "" {
+		marker.SufficientColor = "#409EFF"
+	}
+	if marker.InsufficientColor == "" {
+		marker.InsufficientColor = "#F56C6C"
+	}
+
+	result, err := app.DB.Exec("INSERT INTO markers (latitude, longitude, value, required_value, description, sufficient_color, insufficient_color) VALUES (?, ?, ?, ?, ?, ?, ?)",
+		marker.Latitude, marker.Longitude, marker.Value, marker.RequiredValue, marker.Description, marker.SufficientColor, marker.InsufficientColor)
 	if err != nil {
 		app.Logger.Error("插入标记点失败",
 			zap.Error(err),
@@ -197,8 +285,16 @@ func (app *App) UpdateMarker(c *gin.Context) {
 		return
 	}
 
-	result, err := app.DB.Exec("UPDATE markers SET latitude = ?, longitude = ?, value = ?, required_value = ? WHERE id = ?",
-		marker.Latitude, marker.Longitude, marker.Value, marker.RequiredValue, id)
+	// 设置默认颜色（如果未提供）
+	if marker.SufficientColor == "" {
+		marker.SufficientColor = "#409EFF"
+	}
+	if marker.InsufficientColor == "" {
+		marker.InsufficientColor = "#F56C6C"
+	}
+
+	result, err := app.DB.Exec("UPDATE markers SET latitude = ?, longitude = ?, value = ?, required_value = ?, description = ?, sufficient_color = ?, insufficient_color = ? WHERE id = ?",
+		marker.Latitude, marker.Longitude, marker.Value, marker.RequiredValue, marker.Description, marker.SufficientColor, marker.InsufficientColor, id)
 	if err != nil {
 		app.Logger.Error("更新标记点失败",
 			zap.Error(err),
@@ -422,7 +518,7 @@ func (app *App) DeleteImage(c *gin.Context) {
 }
 
 func (app *App) GetMarkers(c *gin.Context) {
-	rows, err := app.DB.Query("SELECT id, latitude, longitude, value, required_value FROM markers")
+	rows, err := app.DB.Query("SELECT id, latitude, longitude, value, required_value, description, sufficient_color, insufficient_color FROM markers")
 	if err != nil {
 		app.Logger.Error("查询标记点失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
@@ -433,7 +529,7 @@ func (app *App) GetMarkers(c *gin.Context) {
 	markers := make(map[int]*Marker)
 	for rows.Next() {
 		var m Marker
-		if err := rows.Scan(&m.ID, &m.Latitude, &m.Longitude, &m.Value, &m.RequiredValue); err != nil {
+		if err := rows.Scan(&m.ID, &m.Latitude, &m.Longitude, &m.Value, &m.RequiredValue, &m.Description, &m.SufficientColor, &m.InsufficientColor); err != nil {
 			app.Logger.Error("扫描标记点数据失败", zap.Error(err))
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 			return
@@ -708,19 +804,12 @@ func main() {
 	r.GET("/view", func(c *gin.Context) {
 		c.File("./static/view.html")
 	})
-	r.GET("/login", func(c *gin.Context) {
-		c.File("./static/login.html")
-	})
-	r.GET("/visits", func(c *gin.Context) {
-		c.File("./static/visits.html")
-	})
 	r.GET("/pdf-report", func(c *gin.Context) {
 		c.File("./static/pdf-report.html")
 	})
 	r.GET("/", func(c *gin.Context) {
-		c.Redirect(http.StatusMovedPermanently, "/login")
+		c.Redirect(http.StatusMovedPermanently, "/admin")
 	})
-
 	srv := &http.Server{
 		Addr:    fmt.Sprintf(":%d", cfg.Server.Port),
 		Handler: r,

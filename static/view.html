@@ -265,6 +265,9 @@
             <h3 class="description">
                 当前数量: {{ selectedMarker.value }}<br>
                 需要数量: {{ selectedMarker.required_value }}
+                <div v-if="selectedMarker.description" style="margin-top: 10px; padding: 10px; background: rgba(255,255,255,0.2); border-radius: 5px; text-align: left;">
+                    {{ selectedMarker.description }}
+                </div>
             </h3>
             <div class="thumbnail-container">
                 <img
@@ -394,8 +397,9 @@
                                 
                                 // 创建自定义标记点内容
                                 const markerContent = document.createElement('div');
+                                const isSufficient = marker.value >= marker.required_value;
                                 markerContent.className = 'custom-marker ' + 
-                                    (marker.value >= marker.required_value ? 'sufficient' : 'insufficient');
+                                    (isSufficient ? 'sufficient' : 'insufficient');
                                 
                                 // 根据当前显示模式决定显示内容
                                 if (this.showSequence) {
@@ -403,6 +407,11 @@
                                 } else {
                                     markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
                                 }
+
+                                // 使用服务器返回的颜色
+                                markerContent.style.backgroundColor = isSufficient 
+                                    ? marker.sufficient_color || '#409EFF'
+                                    : marker.insufficient_color || '#F56C6C';
 
                                 const markerObj = new AMap.Marker({
                                     position: [marker.longitude, marker.latitude],
@@ -478,6 +487,12 @@
                         if (marker.markerObj) {
                             const markerContent = marker.markerObj.getContent();
                             markerContent.innerHTML = this.showRequiredCount ? marker.required_value.toString() : marker.value.toString();
+                            
+                            // 保持颜色设置
+                            const isSufficient = marker.value >= marker.required_value;
+                            markerContent.style.backgroundColor = isSufficient 
+                                ? marker.sufficient_color || '#409EFF'
+                                : marker.insufficient_color || '#F56C6C';
                         }
                     });
                 },
@@ -491,6 +506,12 @@
                                 // 保存序号到marker对象中，方便后续使用
                                 marker.sequence = index + 1;
                                 markerContent.innerHTML = marker.sequence.toString();
+                                
+                                // 保持颜色设置
+                                const isSufficient = marker.value >= marker.required_value;
+                                markerContent.style.backgroundColor = isSufficient 
+                                    ? marker.sufficient_color || '#409EFF'
+                                    : marker.insufficient_color || '#F56C6C';
                             }
                         });
                     } else {

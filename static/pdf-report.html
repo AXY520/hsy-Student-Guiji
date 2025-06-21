@@ -238,6 +238,12 @@
         .status-warning {
             color: #e6a23c;
         }
+        .description-text {
+            font-size: 14px;
+            max-width: 300px;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
         .marker-images {
             width: 100%;
             display: flex;
@@ -383,6 +389,10 @@
                                         {{ marker.value >= marker.required_value ? '已满足' : '未满足' }}
                                     </span>
                                 </div>
+                                <div class="marker-info-item" v-if="marker.description">
+                                    <span class="info-label">描述信息:</span>
+                                    <span class="info-value description-text">{{ marker.description }}</span>
+                                </div>
                             </div>
                         </div>
                         
@@ -433,12 +443,6 @@
                 }
             },
             mounted() {
-                // 检查登录状态
-                if (localStorage.getItem('isLoggedIn') !== 'true') {
-                    window.location.href = '/login';
-                    return;
-                }
-                
                 this.loadMarkers();
             },
             methods: {
